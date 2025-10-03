@@ -14,85 +14,112 @@
 
   <style>
     :root{
+      /* Paleta Shopee */
       --primary:#ff5722; --primary-2:#e14d1f;
-      --bg:#f7f7f7; --card:#fff; --txt:#222; --muted:#666;
-      --ok:#18a957; --err:#d7263d; --chip:#ffe8e0; --line:#eaeaea;
-      --overlay: rgba(0,0,0,.35);
+      --bg:#f6f7fb; --card:#ffffff; --txt:#1e1f23; --muted:#6b7280;
+      --ok:#16a34a; --err:#dc2626; --chip:#fff0ea; --line:#e8eaf0;
+      --overlay: rgba(0,0,0,.38);
+      --glass: rgba(255,255,255,.7);
+      --shadow-sm: 0 6px 18px rgba(9,12,15,.06);
+      --shadow-md: 0 20px 36px rgba(9,12,15,.12);
+      --radius-2xl:18px; --radius-xl:16px; --radius-lg:14px; --radius:12px;
     }
+
     *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
     body{
-      background:var(--bg);color:var(--txt);
-      font:500 15px/1.38 system-ui,Segoe UI,Roboto,Helvetica,Arial;
+      background: radial-gradient(1200px 520px at 12% -10%, #ffe6df 0%, transparent 55%),
+                  radial-gradient(900px 380px at 90% -6%, #ffd9cc 0%, transparent 60%),
+                  var(--bg);
+      color:var(--txt);
+      font:500 15px/1.42 Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial;
       -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
       display:flex;flex-direction:column;min-height:100vh;
     }
-    .wrap{max-width:1200px;margin:16px auto;padding:0 12px;flex:1}
+
+    /* Cabeçalho compacto */
+    .appbar{
+      position:sticky;top:0;z-index:30;background:rgba(255,255,255,.8);
+      backdrop-filter:saturate(1.3) blur(8px);
+      border-bottom:1px solid var(--line);
+    }
+    .appbar-inner{max-width:1200px;margin:0 auto;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand .logo{
+      width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#ff7b4d 0%,#ff5722 60%);
+      box-shadow:0 6px 16px rgba(255,87,34,.35)
+    }
+    .brand h1{font-size:16px;letter-spacing:.2px}
+    .brand h1 b{color:var(--primary)}
+
+    .wrap{max-width:1200px;margin:14px auto;padding:0 14px;flex:1}
 
     .card{
-      background:var(--card);border-radius:14px;
-      box-shadow:0 5px 16px rgba(0,0,0,.05);
+      background:var(--card);border-radius:var(--radius-xl);
+      box-shadow:var(--shadow-sm);
       padding:14px;transition:transform .12s,box-shadow .12s;
+      border:1px solid var(--line);
     }
-    .card:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(0,0,0,.08)}
+    .card:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(9,12,15,.10)}
 
     .btn{
-      padding:10px 14px;border:0;border-radius:10px;background:var(--primary);
+      padding:10px 14px;border:0;border-radius:12px;background:var(--primary);
       color:#fff;font-weight:800;letter-spacing:.2px;cursor:pointer;
       transition:background .12s,transform .06s,box-shadow .12s;
       box-shadow:0 3px 10px rgba(255,87,34,.22)
     }
     .btn:hover{background:var(--primary-2)} .btn:active{transform:scale(.985)}
     .btn.small{padding:8px 12px;border-radius:10px;font-weight:800}
-    .btn.secondary{background:#2f2f2f;box-shadow:0 3px 10px rgba(0,0,0,.18)}
+    .btn.secondary{background:#111827;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.18)}
     .btn.secondary:hover{background:#000}
     .btn.ghost{background:#fff;color:#333;border:2px solid #e8e8e8;box-shadow:none}
-    .btn.cancel{background:#e8e8e8;color:#222;box-shadow:none}
+    .btn.cancel{background:#f3f4f6;color:#111827;box-shadow:none;border:1px solid var(--line)}
     .btn.full{width:100%}
 
-    .uploader{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .uploader{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .file{
-      display:inline-flex;align-items:center;justify-content:center;min-width:230px;height:40px;
-      padding:0 12px;border:2px dashed #ddd;border-radius:10px;background:#fff;color:#444;
+      display:inline-flex;align-items:center;justify-content:center;min-width:240px;height:42px;
+      padding:0 12px;border:2px dashed #ddd;border-radius:12px;background:#fff;color:#444;
       cursor:pointer;transition:border-color .12s,box-shadow .12s,color .12s;font-weight:800
     }
     .file:hover{border-color:var(--primary);color:var(--primary)}
     .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)}
-    .chip{background:var(--chip);padding:3px 8px;border-radius:999px;font-size:12px}
+    .chip{background:var(--chip);padding:4px 10px;border-radius:999px;font-size:12px;display:inline-block}
     .label-strong{font-weight:900;margin:2px 0 6px}
 
     .grid{display:grid;gap:12px}
     @media(min-width:980px){ .grid{grid-template-columns:1fr 1fr} }
 
-    .scanbar{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+    .scanbar{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
     .scanbar input{
-      flex:1;min-width:220px;padding:12px;border:2px solid #e8e8e8;border-radius:10px;font-size:16px;outline:none;background:#fff;
+      flex:1;min-width:220px;height:42px;padding:12px;border:2px solid #e8e8e8;border-radius:12px;font-size:16px;outline:none;background:#fff;
       transition:border-color .12s,box-shadow .12s,transform .06s;
     }
     .scanbar input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(255,87,34,.12)}
     .scanbar input:active{transform:scale(.999)}
 
-    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:8px;align-items:stretch}
-    .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;justify-content:space-between;min-height:72px}
+    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:8px;align-items:stretch}
+    .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;justify-content:space-between;min-height:74px}
     .kpi .label{color:var(--muted);font-size:11px;letter-spacing:.35px;text-transform:uppercase;line-height:1;opacity:.95}
-    .kpi .value{margin-top:4px;font-size:18px;font-weight:900;line-height:1.1;white-space:normal;font-variant-numeric:tabular-nums}
+    .kpi .value{margin-top:5px;font-size:18px;font-weight:900;line-height:1.1;white-space:normal;font-variant-numeric:tabular-nums}
     .kpi .value.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
 
-    .tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+    .tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
     table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;font-size:13.5px}
+    th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:13.5px}
     th{color:var(--muted);font-weight:800;background:#fafafa;position:sticky;top:0}
     tbody tr{transition:background .12s} tbody tr:hover td{background:#fff5f2}
 
-    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
     .danger{background:#fef2f2;border:1px solid #fde4e4}
 
     footer{
       text-align:center;
-      padding:10px;
+      padding:12px;
       font-size:13px;
       color:var(--muted);
-      border-top:1px solid #eaeaea;
-      margin-top:16px;
+      border-top:1px solid var(--line);
+      margin-top:14px;
     }
     footer b{color:var(--primary)}
 
@@ -103,26 +130,98 @@
       padding:16px;
     }
     .modal{
-      background:#fff;border-radius:16px;max-width:520px;width:100%;
-      box-shadow:0 15px 40px rgba(0,0,0,.18);overflow:hidden;
+      background:var(--card);border-radius:var(--radius-2xl);max-width:640px;width:100%;
+      box-shadow:var(--shadow-md);overflow:hidden;border:1px solid var(--line);
       animation:pop .15s ease-out;
     }
     @keyframes pop{from{transform:scale(.98);opacity:.8}to{transform:scale(1);opacity:1}}
-    .modal header{padding:14px 16px;border-bottom:1px solid #eee;font-weight:900}
+    .modal header{padding:14px 16px;border-bottom:1px solid #eee;font-weight:900;display:flex;align-items:center;gap:8px}
     .modal .content{padding:14px 16px;line-height:1.45}
     .modal .content p{margin:6px 0}
-    .modal .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .modal .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .modal .field{display:flex;flex-direction:column;gap:6px;flex:1}
-    .modal input{
-      padding:10px;border:2px solid #eee;border-radius:10px;font-size:14px;outline:none;background:#fff;
+    .modal input,.modal select{
+      height:42px;padding:10px;border:2px solid #eee;border-radius:12px;font-size:14px;outline:none;background:#fff;
     }
-    .modal input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(255,87,34,.12)}
-    .modal footer{display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #eee;padding:12px}
+    .modal input:focus,.modal select:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(255,87,34,.12)}
+    .modal footer{display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #eee;padding:12px}
     .hidden{display:none}
     .warn-badge{color:#d7263d;font-weight:900}
+
+    /* Dots do tutorial */
+    .dots{display:flex;gap:6px;justify-content:center;margin-top:8px}
+    .dot{width:8px;height:8px;border-radius:999px;background:#ddd}
+    .dot.active{background:var(--primary)}
+
+    /* Bloco histórico de envios */
+    .log{margin-top:8px;border:1px solid var(--line);border-radius:14px;padding:10px;background:#fff}
+    .log h4{font-size:13px;font-weight:900;margin-bottom:6px;color:#444}
+    .log ul{list-style:none;display:grid;gap:6px;max-height:160px;overflow:auto}
+    .log li{font-size:12.5px;color:#555}
+    .log li .when{color:#888;margin-left:4px}
+
+    /* ===== TOAST CENTRAL ===== */
+    .toast-center{
+      position:fixed;left:50%;top:50%;
+      transform:translate(-50%,-50%) scale(.94);
+      z-index:80;display:flex;flex-direction:column;align-items:center;gap:6px;
+      background:#fff;border:1px solid var(--line);
+      padding:16px 18px;border-radius:16px;
+      box-shadow:0 12px 30px rgba(0,0,0,.14);
+      animation:toast-pop .9s ease-in-out forwards;
+    }
+    .toast-center .icon{ width:56px;height:56px;display:block;filter: drop-shadow(0 6px 14px rgba(0,0,0,.18)); }
+    .toast-center .title{ font-weight:900; letter-spacing:.2px; }
+    .toast-success .title{ color:var(--ok); }
+    .toast-error .title{ color:var(--err); }
+    .toast-center .subtitle{ font-size:12px; color:var(--muted); }
+    @keyframes toast-pop{
+      0%   { opacity:0; transform:translate(-50%,-50%) scale(.92) }
+      15%  { opacity:1; transform:translate(-50%,-50%) scale(1.02) }
+      60%  { opacity:1; transform:translate(-50%,-50%) scale(1.0) }
+      100% { opacity:0; transform:translate(-50%,-54%) scale(.98) }
+    }
+
+    /* ===== Overlay de carregamento ===== */
+    .loading-overlay{
+      position:fixed; inset:0; z-index:70;
+      background:rgba(255,255,255,.84); backdrop-filter:blur(2px);
+      display:none; align-items:center; justify-content:center;
+    }
+    .loading-box{
+      background:#fff; border:1px solid var(--line); border-radius:16px;
+      padding:16px 18px; box-shadow:var(--shadow-md); display:flex; gap:12px; align-items:center;
+      font-weight:900;
+    }
+    .spinner{
+      width:22px; height:22px; border-radius:50%;
+      border:3px solid #eee; border-top-color: var(--primary);
+      animation:spin .9s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* FAB Ajuda */
+    .fab{
+      position:fixed;right:18px;bottom:18px;z-index:40;
+      background:var(--primary);color:#fff;border:0;border-radius:999px;
+      padding:12px 16px;font-weight:900;box-shadow:0 10px 25px rgba(255,87,34,.35);cursor:pointer
+    }
+    .fab:hover{background:var(--primary-2)}
   </style>
 </head>
 <body>
+
+<!-- Appbar -->
+<div class="appbar">
+  <div class="appbar-inner">
+    <div class="brand">
+      <div class="logo"></div>
+      <h1><b>SPR</b> • Realocamento de Pacotes</h1>
+    </div>
+    <div class="muted" style="font-size:12.5px">LSP 12 Jardim Adriana</div>
+  </div>
+</div>
+
 <div class="wrap">
 
   <!-- Uploader -->
@@ -131,8 +230,12 @@
       <label class="file dropzone" id="dropzone" for="file">Arraste ou clique para selecionar</label>
       <input id="file" type="file" accept=".xlsx,.xls" style="display:none" />
       <button class="btn" id="btnLoad">Carregar planilha</button>
+      <button class="btn" id="btnLoadSheets" title="Ler dados do Google Sheets (CTs)">Ler do Sheets</button>
       <button class="btn secondary" id="btnReset" title="Limpa base e resultados">Limpar base</button>
-      <div id="loadMsg" class="muted">Aba padrão: <b>Planilha1</b></div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn ghost small" id="btnHelp" title="Como usar">Ajuda</button>
+        <div id="loadMsg" class="muted">Aba padrão: <b>Planilha1</b></div>
+      </div>
     </div>
   </section>
 
@@ -203,7 +306,7 @@
     </aside>
   </div>
 
-  <!-- SELEÇÕES / REALOCAÇÕES -->
+  <!-- SELEÇÕES / REALLOCAÇÕES -->
   <section class="card" style="margin-top:12px">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <div class="label-strong">Realocações selecionadas</div>
@@ -227,6 +330,12 @@
         <tbody></tbody>
       </table>
     </div>
+
+    <!-- Log de envios -->
+    <div class="log" id="sendLog">
+      <h4>Histórico de envios</h4>
+      <ul id="sendLogList"><li class="muted">Nenhum envio ainda.</li></ul>
+    </div>
   </section>
 
 </div>
@@ -235,8 +344,18 @@
   Criado por <b>Richard Lucas – LSP 12 Adriana</b>
 </footer>
 
+<!-- Overlays -->
+<div id="toastRoot"></div>
+<div id="loading" class="loading-overlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div id="loadingMsg">Lendo arquivo…</div>
+  </div>
+</div>
+
 <!-- ========= Modals ========= -->
 <div id="overlay" class="modal-overlay">
+
   <!-- info modal -->
   <div id="infoModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
     <header id="infoTitle">Informação</header>
@@ -246,7 +365,7 @@
     </footer>
   </div>
 
-  <!-- sheets form modal -->
+  <!-- sheets form modal (ENVIAR) -->
   <div id="sheetsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sheetsTitle">
     <header id="sheetsTitle">Enviar para Google Sheets</header>
     <div class="content">
@@ -254,15 +373,22 @@
         <label for="sheetUrl"><b>URL da planilha</b> (docs.google.com/spreadsheets/...)</label>
         <input id="sheetUrl" placeholder="Cole aqui o link completo da planilha">
       </div>
+
       <div class="row" style="margin-top:8px">
         <div class="field">
-          <label for="sheetRange"><b>Aba/Range</b> (ex.: <code>Página1!A1</code>)</label>
-          <input id="sheetRange" placeholder="Página1!A1" value="Página1!A1">
+          <label for="sheetTab"><b>Escolha a aba de destino</b></label>
+          <select id="sheetTab" disabled>
+            <option value="">Cole a URL para listar as abas…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="startCell"><b>Célula inicial</b> (ex.: <code>A1</code>)</label>
+          <input id="startCell" value="A1" placeholder="A1">
         </div>
       </div>
+
       <p class="muted" style="margin-top:10px">
-        Serão enviados <b>apenas</b> as colunas <span class="chip">BR &amp; Protocolo</span> e
-        <span class="chip">AT &amp; Protocolo</span>.
+        Serão enviados <b>apenas</b> os valores <span class="chip">BR</span> e <span class="chip">AT</span> (sem cabeçalho).
       </p>
     </div>
     <footer>
@@ -270,7 +396,64 @@
       <button class="btn" id="btnDoSend">Enviar</button>
     </footer>
   </div>
+
+  <!-- sheets import modal (LER DO SHEETS) -->
+  <div id="importModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <header id="importTitle">Ler base do Google Sheets</header>
+    <div class="content">
+      <div class="field">
+        <label for="importUrl"><b>URL da planilha</b> (docs.google.com/spreadsheets/...)</label>
+        <input id="importUrl" placeholder="Cole aqui o link completo da planilha">
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div class="field">
+          <label for="importTab"><b>Aba para leitura</b> (padrão: <code>Calculation Tasks (CTs)</code>)</label>
+          <select id="importTab" disabled>
+            <option value="">Cole a URL para listar as abas…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <div class="muted" id="importHint">Lemos todas as colunas existentes (A:ZZZ) e normalizamos como no Excel.</div>
+        </div>
+      </div>
+    </div>
+    <footer>
+      <button class="btn cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn" id="btnDoImport">Carregar</button>
+    </footer>
+  </div>
+
+  <!-- ONBOARDING: pergunta -->
+  <div id="askModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="askTitle">
+    <header id="askTitle">Você já sabe usar o site?</header>
+    <div class="content">
+      <p>Se você já conhece o fluxo, pode ir direto. Se preferir, te mostro um passo-a-passo curto (menos de 1 minuto).</p>
+    </div>
+    <footer>
+      <button class="btn cancel" id="btnAskYes">Sim, já sei</button>
+      <button class="btn" id="btnAskNo">Não, quero o tutorial</button>
+    </footer>
+  </div>
+
+  <!-- ONBOARDING: tutorial -->
+  <div id="tutModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="tutTitle">
+    <header id="tutTitle">Como usar – passo a passo</header>
+    <div class="content">
+      <div id="tutBody"></div>
+      <div class="dots" id="tutDots"></div>
+    </div>
+    <footer>
+      <button class="btn cancel" id="btnTutPrev">Voltar</button>
+      <button class="btn secondary" id="btnTutDone" style="display:none">Concluir</button>
+      <button class="btn" id="btnTutNext">Próximo</button>
+    </footer>
+  </div>
 </div>
+
+<!-- FAB (atalho) -->
+<button class="fab" id="fabHelp" title="Tutorial">Ajuda</button>
 
 <script>
 /* ====== OAuth (GIS) ====== */
@@ -280,9 +463,121 @@ const ENFORCE_SHOPEE = true; // false para não travar domínio
 
 let accessToken = null;
 let tokenClient = null;
-let currentEmail = null; // email do usuário logado
+let currentEmail = null;
 
-// Inicializa o tokenClient quando o script do GIS terminar de carregar
+/* ====== Persistência por usuário ====== */
+const LS_PREFIX = 'spr_realloc_history_';
+const LS_SENDLOG = 'spr_realloc_sendlog_';
+const LS_LAST_SHEET = 'spr_realloc_last_sheet_';
+const LS_VEH = 'veh_filter';
+const LS_LAST_BASE = 'last_base_info';
+const ONBOARD_KEY = 'spr_onboarding_done_';
+
+function storageKey(){ return LS_PREFIX + (currentEmail || 'anon'); }
+function sendLogKey(){ return LS_SENDLOG + (currentEmail || 'anon'); }
+function lastSheetKey(){ return LS_LAST_SHEET + (currentEmail || 'anon'); }
+function onboardingKey(){ return ONBOARD_KEY + (currentEmail || 'anon'); }
+
+/* ====== Utils/UI ====== */
+const $ = s => document.querySelector(s);
+function focusScan(){ setTimeout(()=>$("#scan").focus(), 0); }
+function showLoading(msg='Carregando…'){ const el=$("#loading"); $("#loadingMsg").textContent=msg; el.style.display='flex'; }
+function hideLoading(){ $("#loading").style.display='none'; }
+function showToastCenter({ok=true, title, subtitle}){
+  const root = document.getElementById('toastRoot');
+  const box = document.createElement('div');
+  box.className = `toast-center ${ok?'toast-success':'toast-error'}`;
+
+  const img = document.createElement('img');
+  const svg = ok
+    ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#16a34a"/><path d="M18 34l9 9 19-20" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+    : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#dc2626"/><path d="M22 22l20 20M42 22L22 42" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>`;
+  img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  img.className = 'icon';
+  img.alt = ok ? 'Sucesso' : 'Erro';
+
+  const t = document.createElement('div'); t.className='title'; t.textContent = title || (ok?'Sucesso':'Erro');
+  const s = document.createElement('div'); s.className='subtitle'; s.textContent = subtitle || '';
+
+  box.appendChild(img); box.appendChild(t); if(subtitle) box.appendChild(s);
+  root.appendChild(box);
+  box.addEventListener('animationend', ()=> box.remove());
+}
+
+/* Sons curtos */
+function playAddedSound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain(); const now = ctx.currentTime;
+    o.type='triangle'; o.frequency.setValueAtTime(880, now); o.frequency.exponentialRampToValueAtTime(1320, now+0.12);
+    g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(0.25, now+0.02); g.gain.exponentialRampToValueAtTime(0.0001, now+0.18);
+    o.connect(g).connect(ctx.destination); o.start(); o.stop(now+0.2);
+  }catch(_){}
+}
+function playErrorSound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain(); const now = ctx.currentTime;
+    o.type='square'; o.frequency.setValueAtTime(300, now); o.frequency.exponentialRampToValueAtTime(160, now+0.15);
+    g.gain.setValueAtTime(0.25, now); g.gain.exponentialRampToValueAtTime(0.0001, now+0.2);
+    o.connect(g).connect(ctx.destination); o.start(); o.stop(now+0.22);
+  }catch(_){}
+}
+
+/* ====== Modal helpers ====== */
+const overlay = $("#overlay");
+const infoModal = $("#infoModal");
+const infoBody = $("#infoBody");
+const sheetsModal = $("#sheetsModal");
+const importModal = $("#importModal");
+const askModal = $("#askModal");
+const tutModal = $("#tutModal");
+function openModal(which){
+  overlay.style.display = 'flex';
+  [infoModal, sheetsModal, importModal, askModal, tutModal].forEach(x=>x.classList.add('hidden'));
+  which.classList.remove('hidden');
+}
+function closeModal(){ overlay.style.display = 'none'; }
+function showInfo(title, html){
+  $("#infoTitle").textContent = title || 'Informação';
+  infoBody.innerHTML = html || '';
+  openModal(infoModal);
+}
+
+/* ====== Persistência / Histórico ====== */
+function saveHistory(){ try{ localStorage.setItem(storageKey(), JSON.stringify(SELECTED)); }catch(_){} }
+function loadHistoryForCurrentUser(){
+  try{
+    const raw = localStorage.getItem(storageKey());
+    if(raw){ SELECTED = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : []; renderSelections(); }
+  }catch(_){}
+  renderSendLog();
+  maybeShowOnboarding();
+}
+function appendSendLog(entry){
+  try{
+    const raw = localStorage.getItem(sendLogKey());
+    const arr = raw ? JSON.parse(raw) : [];
+    arr.unshift(entry);
+    localStorage.setItem(sendLogKey(), JSON.stringify(arr.slice(0,50)));
+  }catch(_){}
+  renderSendLog();
+}
+function renderSendLog(){
+  const ul = $("#sendLogList");
+  ul.innerHTML = '';
+  try{
+    const arr = JSON.parse(localStorage.getItem(sendLogKey())||'[]');
+    if(!arr.length){ ul.innerHTML = '<li class="muted">Nenhum envio ainda.</li>'; return; }
+    for(const e of arr){
+      const li = document.createElement('li');
+      li.innerHTML = `<b>${e.count}</b> itens → <span class="chip">${e.sheetTitle||'?'}</span> <span class="muted">@ ${e.spreadsheetId.slice(0,8)}…</span> <span class="when">${new Date(e.when).toLocaleString()}</span>`;
+      ul.appendChild(li);
+    }
+  }catch(_){ ul.innerHTML = '<li class="muted">Nenhum envio ainda.</li>'; }
+}
+
+/* ====== OAuth init ====== */
 window.onload = () => {
   if (window.google?.accounts?.oauth2) {
     tokenClient = google.accounts.oauth2.initTokenClient({
@@ -291,7 +586,6 @@ window.onload = () => {
       callback: async (resp) => {
         if (resp.error) { showInfo('Erro OAuth', 'Erro: ' + resp.error); return; }
         accessToken = resp.access_token;
-
         try{
           if (ENFORCE_SHOPEE) await gatekeepShopee(accessToken);
           currentEmail = await getUserEmail(accessToken);
@@ -299,29 +593,20 @@ window.onload = () => {
         }catch(e){
           showInfo('Acesso negado', e.message || e);
           google.accounts.oauth2.revoke(accessToken);
-          accessToken = null;
-          currentEmail = null;
-          return;
+          accessToken = null; currentEmail = null;
         }
       }
     });
   }
 };
-
-// ensureAuth robusta
 async function ensureAuth(){
   if (!tokenClient) {
     if (!window.google || !google.accounts || !google.accounts.oauth2) {
       showInfo('Aguarde', 'Google Identity ainda não carregou. Tente novamente em 1–2 segundos.');
       throw new Error('GIS não carregado');
     }
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPES,
-      callback: () => {}
-    });
+    tokenClient = google.accounts.oauth2.initTokenClient({ client_id: CLIENT_ID, scope: SCOPES, callback: () => {} });
   }
-
   if (accessToken) return true;
 
   return new Promise((resolve, reject) => {
@@ -335,29 +620,22 @@ async function ensureAuth(){
         resolve(true);
       } catch (e) {
         google.accounts.oauth2.revoke(accessToken);
-        accessToken = null;
-        currentEmail = null;
+        accessToken = null; currentEmail = null;
         reject(e);
       }
     };
     tokenClient.requestAccessToken({ prompt: 'consent' });
   });
 }
-
 async function getUserEmail(token){
-  const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${token}` } });
   if (!r.ok) throw new Error('Falha ao obter userinfo');
   const data = await r.json();
   return String(data.email||'').toLowerCase();
 }
-
 async function gatekeepShopee(token){
   const email = await getUserEmail(token);
-  if (!email.endsWith('@shopee.com')) {
-    throw new Error('Acesso permitido apenas para contas @shopee.com');
-  }
+  if (!email.endsWith('@shopee.com')) throw new Error('Acesso permitido apenas para contas @shopee.com');
 }
 
 /* ========= Utilidades ========= */
@@ -365,27 +643,6 @@ const stripAccents = (s='') => String(s).normalize('NFD').replace(/\p{Diacritic}
 const norm = (s='') => stripAccents(String(s).trim()).toLowerCase();
 const normBRS = (s='') => String(s).toUpperCase().replace(/[^A-Z0-9]/g,'');
 const isExcel = f => /\.(xlsx|xls)$/i.test(f?.name||'');
-const $ = s => document.querySelector(s);
-function focusScan(){ setTimeout(()=>$("#scan").focus(), 0); }
-
-/* ========= Modal helpers ========= */
-const overlay = $("#overlay");
-const infoModal = $("#infoModal");
-const infoBody = $("#infoBody");
-const sheetsModal = $("#sheetsModal");
-function openModal(which){
-  overlay.style.display = 'flex';
-  [infoModal, sheetsModal].forEach(x=>x.classList.add('hidden'));
-  which.classList.remove('hidden');
-}
-function closeModal(){
-  overlay.style.display = 'none';
-}
-function showInfo(title, html){
-  $("#infoTitle").textContent = title || 'Informação';
-  infoBody.innerHTML = html || '';
-  openModal(infoModal);
-}
 
 /* ========= Mapeamento/normalização ========= */
 const COLS_EXT = {
@@ -421,22 +678,6 @@ let VEH_FILTER = new Set();
 let LAST_ROW = null;
 let LAST_SAME = [];
 let SELECTED = []; // {brs, at, rota}
-
-/* ========= Persistência por usuário ========= */
-const LS_PREFIX = 'spr_realloc_history_';
-function storageKey(){ return LS_PREFIX + (currentEmail || 'anon'); }
-function saveHistory(){
-  try{ localStorage.setItem(storageKey(), JSON.stringify(SELECTED)); }catch(_){}
-}
-function loadHistoryForCurrentUser(){
-  try{
-    const raw = localStorage.getItem(storageKey());
-    if(raw){
-      SELECTED = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
-      renderSelections();
-    }
-  }catch(_){}
-}
 
 /* ========= Excel ========= */
 function parseSheetToObjects(ws){
@@ -476,9 +717,9 @@ function buildIndexes(){
     if(r.brs) INDEX_BRS.set(normBRS(r.brs), r);
 
     if(r.bairro){
-      const keyB = stripAccents(String(r.bairro)).trim();
-      if(!INDEX_BAIRRO_CLUSTER.has(keyB)) INDEX_BAIRRO_CLUSTER.set(keyB, new Map());
-      const mapC = INDEX_BAIRRO_CLUSTER.get(keyB);
+      const key = stripAccents(String(r.bairro)).trim();
+      if(!INDEX_BAIRRO_CLUSTER.has(key)) INDEX_BAIRRO_CLUSTER.set(key, new Map());
+      const mapC = INDEX_BAIRRO_CLUSTER.get(key);
       const keyC = r.rota || '(sem rota)';
       if(!mapC.has(keyC)) mapC.set(keyC, []);
       mapC.get(keyC).push(r);
@@ -493,7 +734,7 @@ function rebuildVehicleFilterFromBase(){
   const set = new Set();
   for(const r of BASE_ROWS){ if(r.veiculo){ set.add(String(r.veiculo).trim()); } }
   VEH_TYPES = Array.from(set).sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
-  const saved = JSON.parse(localStorage.getItem('veh_filter')||'null');
+  const saved = JSON.parse(localStorage.getItem(LS_VEH)||'null');
   VEH_FILTER = new Set(Array.isArray(saved) ? saved : VEH_TYPES);
   renderFilterUI();
 }
@@ -505,11 +746,11 @@ function renderFilterUI(){
     const id = 'veh_'+t.replace(/\W+/g,'_');
     const label = document.createElement('label');
     label.className = 'chipCheck';
-    label.innerHTML = `<input type="checkbox" id="${id}" value="${t}" ${VEH_FILTER.has(t)?'checked':''}><span>${t}</span>`;
+    label.innerHTML = `<input type="checkbox" id="${id}" value="${t}" ${VEH_FILTER.has(t)?'checked':''}><span class="chip">${t}</span>`;
     wrap.appendChild(label);
     label.querySelector('input').addEventListener('change', e=>{
       if(e.target.checked) VEH_FILTER.add(t); else VEH_FILTER.delete(t);
-      localStorage.setItem('veh_filter', JSON.stringify(Array.from(VEH_FILTER)));
+      localStorage.setItem(LS_VEH, JSON.stringify(Array.from(VEH_FILTER)));
       rerenderSame();
     });
   });
@@ -518,18 +759,18 @@ function renderFilterUI(){
   $("#btnAll").onclick = ()=>{ VEH_FILTER = new Set(VEH_TYPES); persistAndSync(); };
   $("#btnNone").onclick= ()=>{ VEH_FILTER.clear(); persistAndSync(); };
   function persistAndSync(){
-    localStorage.setItem('veh_filter', JSON.stringify(Array.from(VEH_FILTER)));
+    localStorage.setItem(LS_VEH, JSON.stringify(Array.from(VEH_FILTER)));
     wrap.querySelectorAll('input[type="checkbox"]').forEach(ch=> ch.checked = VEH_FILTER.has(ch.value));
     rerenderSame();
   }
 }
 
-/* ========= Carregar arquivo ========= */
+/* ========= Carregar arquivo local ========= */
 async function handleLoad(inputFile){
   const file = inputFile || $("#file").files[0];
   if(!file){ showInfo('Arquivo', 'Selecione um arquivo <b>.xlsx</b>.'); return; }
   if(!isExcel(file)){ showInfo('Arquivo inválido', 'Use arquivos <b>.xlsx</b> ou <b>.xls</b>.'); return; }
-  $("#loadMsg").textContent = 'Lendo arquivo...';
+  showLoading('Lendo arquivo...');
 
   try{
     const buf = await file.arrayBuffer();
@@ -549,9 +790,14 @@ async function handleLoad(inputFile){
 
     const when = new Date().toLocaleString();
     $("#loadMsg").innerHTML = `<span class="ok">Arquivo "<b>${file.name}</b>" lido (${BASE_ROWS.length} linhas) em ${when}.</span>`;
-    localStorage.setItem('last_base_info', JSON.stringify({name:file.name, rows:BASE_ROWS.length, when:Date.now()}));
+    localStorage.setItem(LS_LAST_BASE, JSON.stringify({name:file.name, rows:BASE_ROWS.length, when:Date.now()}));
+
+    hideLoading();
+    showToastCenter({ok:true, title:'Pacotes prontos', subtitle:'Base carregada (arquivo)'});
     focusScan();
   }catch(e){
+    hideLoading();
+    showToastCenter({ok:false, title:'Falha ao ler o Excel'});
     showInfo('Falha ao ler o Excel', e.message);
   }
 }
@@ -599,13 +845,11 @@ function renderResult(row, same){
     const qtdNoBairro = g.rows.length;
     const veiculo = g.rows[0].veiculo || '—';
     const isFiorino = /fiorino/i.test(veiculo);
-
     const totalCage = INDEX_TOTAL_BY_CAGE.get(g.cage) || qtdNoBairro;
 
-    // Aviso quando poucos pacotes
     let statusHtml = '';
     if(qtdNoBairro <= 3 && !isFiorino){
-      statusHtml = `<span class="warn-badge" title="Poucos pacotes neste bairro">⚠️ ${qtdNoBairro} <small>(poucos pacotes)</small></span>`;
+      statusHtml = `<span class="warn-badge" title="Poucos pacotes neste bairro">⚠️ ${qtdNoBairro} <small>(poucos)</small></span>`;
     }else{
       statusHtml = `<span class="ok" title="Quantidade no bairro">${qtdNoBairro}</span>`;
     }
@@ -619,10 +863,19 @@ function renderResult(row, same){
       <td>${statusHtml}</td>
       <td><button class="btn small" data-cage="${g.cage}">Adicionar nesta rota</button></td>
     `;
-    tr.querySelector('button').addEventListener('click', ()=>{
+    const btn = tr.querySelector('button');
+    btn.addEventListener('click', ()=>{
       if(!LAST_ROW) return;
       const atTarget = pickRepresentativeAT(g.rows);
-      addSelection({ brs: LAST_ROW.brs, at: atTarget, rota: g.cage });
+      const ok = addSelection({ brs: LAST_ROW.brs, at: atTarget, rota: g.cage });
+      if(ok){
+        showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${LAST_ROW.brs} → ${atTarget}`});
+        playAddedSound();
+        if (navigator.vibrate) { try{ navigator.vibrate(10); }catch(_){} }
+      }else{
+        showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'});
+        playErrorSound();
+      }
     });
     tbody.appendChild(tr);
   });
@@ -658,10 +911,18 @@ function renderSelections(){
   });
   $("#selInfo").textContent = SELECTED.length ? `${SELECTED.length} item(ns)` : 'Sem itens.';
 }
+
+/* BLOQUEIO: BR não pode repetir na mesma AT */
 function addSelection({brs, at, rota}){
+  const exists = SELECTED.some(it =>
+    normBRS(it.brs) === normBRS(brs) &&
+    String(it.at||'').trim() === String(at||'').trim()
+  );
+  if(exists){ return false; }
   SELECTED.push({brs, at, rota});
   saveHistory();
   renderSelections();
+  return true;
 }
 function clearSelections(){
   SELECTED = [];
@@ -699,14 +960,68 @@ async function gidToSheetTitle(spreadsheetId, gid){
   return sheet ? sheet.properties.title : null;
 }
 
+/* Listar abas (modal de ENVIAR) */
+async function listTabsFromUrl(){
+  const link = $("#sheetUrl").value.trim();
+  const select = $("#sheetTab");
+  select.innerHTML = '<option value="">Carregando abas…</option>';
+  select.disabled = true;
+
+  const spreadsheetId = parseSpreadsheetId(link);
+  if(!spreadsheetId){
+    select.innerHTML = '<option value="">URL inválida</option>';
+    return;
+  }
+
+  try{
+    await ensureAuth();
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if(!res.ok){
+      select.innerHTML = '<option value="">Falha ao listar abas</option>';
+      return;
+    }
+    const data = await res.json();
+    const sheets = (data.sheets||[]).map(s => s.properties?.title).filter(Boolean);
+    if(!sheets.length){
+      select.innerHTML = '<option value="">Sem abas visíveis</option>';
+      return;
+    }
+    select.innerHTML = sheets.map(t => `<option value="${t}">${t}</option>`).join('');
+    select.disabled = false;
+
+    try{
+      const last = JSON.parse(localStorage.getItem(lastSheetKey())||'null');
+      if(last && last.spreadsheetId === spreadsheetId && sheets.includes(last.sheetTitle)){
+        select.value = last.sheetTitle;
+        $("#startCell").value = last.startCell || 'A1';
+      }
+    }catch(_){}
+  }catch(_){
+    select.innerHTML = '<option value="">Erro ao carregar abas</option>';
+  }
+}
+
 /* abre modal de envio */
 function openSheetsModal(){
   $("#sheetUrl").value = '';
-  $("#sheetRange").value = 'Página1!A1';
+  $("#sheetTab").innerHTML = '<option value="">Cole a URL para listar as abas…</option>';
+  $("#sheetTab").disabled = true;
+  $("#startCell").value = 'A1';
+
+  try{
+    const last = JSON.parse(localStorage.getItem(lastSheetKey())||'null');
+    if(last){
+      $("#sheetUrl").value = last.url || '';
+      if(last.url) listTabsFromUrl();
+    }
+  }catch(_){}
+
   openModal(sheetsModal);
 }
 
-/* envia pro sheets usando os dados do modal — somente 2 colunas */
+/* envia pro sheets — apenas BR e AT, sem cabeçalho */
 async function doSendToSheets(){
   if(!SELECTED.length){ showInfo('Envio', 'Nenhuma realocação na tabela.'); return; }
 
@@ -717,46 +1032,157 @@ async function doSendToSheets(){
 
   await ensureAuth();
 
-  let range = $("#sheetRange").value.trim();
-  if(!range){
-    try{
-      const gid = parseGid(link);
-      if(gid !== null){
-        const title = await gidToSheetTitle(spreadsheetId, gid);
-        if(title) range = `${title}!A1`;
-      }
-    }catch(_){}
-    if(!range){ showInfo('Range obrigatório', 'Informe a aba/range, ex.: <b>Página1!A1</b>.'); return; }
+  const sheetTitle = $("#sheetTab").value.trim();
+  const startCell  = $("#startCell").value.trim() || 'A1';
+  if(!sheetTitle){
+    showInfo('Aba obrigatória', 'Selecione a aba de destino.');
+    return;
   }
 
-  const values = [
-    ['BR & Protocolo','AT & Protocolo'],
-    ...SELECTED.map(it=>[it.brs||'', it.at||''])
-  ];
+  try{
+    localStorage.setItem(lastSheetKey(), JSON.stringify({ url: link, spreadsheetId, sheetTitle, startCell }));
+  }catch(_){}
 
-  const apiUrl =
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}` +
-    `/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+  const range = `${sheetTitle}!${startCell}`;
+  const values = SELECTED.map(it=>[it.brs||'', it.at||'']); // sem cabeçalho
+
+  const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
 
   try{
     const res = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ values })
     });
-    if(!res.ok){
-      const txt = await res.text();
-      throw new Error(txt);
-    }
+    if(!res.ok){ const txt = await res.text(); throw new Error(txt); }
     closeModal();
-    showInfo('Sucesso', 'Enviado com sucesso para o Sheets!');
+    showToastCenter({ok:true, title:'Enviado!', subtitle:'Dados enviados ao Sheets'});
+    appendSendLog({ when: Date.now(), count: values.length, spreadsheetId, sheetTitle });
   }catch(err){
     console.error(err);
+    showToastCenter({ok:false, title:'Falha ao enviar'});
     showInfo('Falha ao enviar', 'Verifique permissões e se a API do Sheets está ativa.<br><small>'+ (err?.message||err) +'</small>');
   }
+}
+
+/* ========= Ler base direto do Google Sheets (aba CTs) ========= */
+const DEFAULT_CTS_TITLE = "Calculation Tasks (CTs)";
+
+async function loadFromGoogleSheet(url, tabTitle = DEFAULT_CTS_TITLE){
+  const spreadsheetId = parseSpreadsheetId(url);
+  if(!spreadsheetId){
+    showInfo('URL inválida', 'Cole um link de <b>docs.google.com/spreadsheets</b>.');
+    return;
+  }
+
+  await ensureAuth();
+  showLoading('Lendo Google Sheets (CTs)…');
+
+  try{
+    const range = encodeURIComponent(`'${tabTitle}'!A:ZZZ`);
+    const api = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
+    const res = await fetch(api, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if(!res.ok){
+      const msg = await res.text();
+      throw new Error(`Falha ao ler a aba "${tabTitle}".<br><small>${msg}</small>`);
+    }
+    const data = await res.json();
+    const values = Array.isArray(data.values) ? data.values : [];
+    if(values.length < 2){
+      throw new Error(`A aba <b>${tabTitle}</b> não tem linhas suficientes (precisa de cabeçalho + dados).`);
+    }
+
+    const header = values[0].map(h => String(h||'').trim());
+    const rowsObj = values.slice(1).map(row => {
+      const o = {};
+      for(let i=0;i<header.length;i++){
+        const key = header[i] || `Col_${i+1}`;
+        o[key] = (row[i] !== undefined && row[i] !== null) ? String(row[i]) : '';
+      }
+      return o;
+    });
+
+    BASE_ROWS = rowsObj.map(normalizeFromExt).filter(r=>r.brs);
+    buildIndexes();
+    rebuildVehicleFilterFromBase();
+
+    $("#baseInfo").textContent = `${BASE_ROWS.length} linhas carregadas (Google Sheets)`;
+    $("#sheetInfo").textContent = `Aba usada: ${tabTitle}`;
+    $("#scan").disabled = false; $("#btnScan").disabled = false;
+    $("#scanMsg").innerHTML = '<span class="ok">Base carregada! Já pode bipar.</span>';
+
+    hideLoading();
+    showToastCenter({ok:true, title:'Pacotes prontos', subtitle:'Lidos do Google Sheets (CTs)'});
+    focusScan();
+
+    try{
+      localStorage.setItem(LS_LAST_BASE, JSON.stringify({
+        name: `Sheets:${spreadsheetId}/${tabTitle}`,
+        rows: BASE_ROWS.length,
+        when: Date.now()
+      }));
+    }catch(_){}
+  }catch(err){
+    hideLoading();
+    showToastCenter({ok:false, title:'Falha ao ler do Sheets'});
+    showInfo('Falha ao ler do Sheets', err?.message || String(err));
+  }
+}
+
+/* Listar abas (modal de IMPORTAR) com preferência CTs */
+async function listTabsFromUrlForImport(){
+  const link = $("#importUrl").value.trim();
+  const select = $("#importTab");
+  select.innerHTML = '<option value="">Carregando abas…</option>';
+  select.disabled = true;
+
+  const spreadsheetId = parseSpreadsheetId(link);
+  if(!spreadsheetId){
+    select.innerHTML = '<option value="">URL inválida</option>';
+    return;
+  }
+
+  try{
+    await ensureAuth();
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if(!res.ok){
+      select.innerHTML = '<option value="">Falha ao listar abas</option>';
+      return;
+    }
+    const data = await res.json();
+    const sheets = (data.sheets||[]).map(s => s.properties?.title).filter(Boolean);
+    if(!sheets.length){
+      select.innerHTML = '<option value="">Sem abas visíveis</option>';
+      return;
+    }
+    select.innerHTML = sheets.map(t => `<option value="${t}">${t}</option>`).join('');
+    select.disabled = false;
+
+    // Seleciona automaticamente "Calculation Tasks (CTs)" se existir
+    const preferred = sheets.find(t => t.trim().toLowerCase() === DEFAULT_CTS_TITLE.toLowerCase());
+    select.value = preferred || sheets[0];
+  }catch(_){
+    select.innerHTML = '<option value="">Erro ao carregar abas</option>';
+  }
+}
+
+/* abre modal de importação (LER DO SHEETS) */
+function openImportModal(){
+  $("#importUrl").value = '';
+  $("#importTab").innerHTML = '<option value="">Cole a URL para listar as abas…</option>';
+  $("#importTab").disabled = true;
+  openModal(importModal);
+}
+
+/* dispara importação */
+async function doImportFromSheets(){
+  const url = $("#importUrl").value.trim();
+  if(!url){ showInfo('URL inválida', 'Cole a URL do Google Sheets.'); return; }
+  const tab = $("#importTab").value || DEFAULT_CTS_TITLE;
+  closeModal();
+  await loadFromGoogleSheet(url, tab);
 }
 
 /* ========= Ações ========= */
@@ -790,7 +1216,7 @@ function resetBase(){
   clearSelections();
 }
 
-/* ========= Drag & Drop ========= */
+/* ========= Drag & Drop + Auto load ========= */
 (function setupDnd(){
   const dz = document.getElementById('dropzone');
   const input = document.getElementById('file');
@@ -804,9 +1230,14 @@ function resetBase(){
     const f = e.dataTransfer?.files?.[0];
     if(f){ input.files = e.dataTransfer.files; handleLoad(f); }
   });
+
+  input.addEventListener('change', (e)=>{
+    const f = e.target.files?.[0];
+    if(f) handleLoad(f);
+  });
 })();
 
-/* ========= Listeners ========= */
+/* ========= Onboarding & Listeners ========= */
 document.addEventListener('DOMContentLoaded', ()=>{
   $("#btnLoad").addEventListener("click", ()=>handleLoad());
   $("#btnScan").addEventListener("click", handleScan);
@@ -816,21 +1247,64 @@ document.addEventListener('DOMContentLoaded', ()=>{
   $("#btnExport").addEventListener("click", exportSelections);
   $("#btnClearSel").addEventListener("click", clearSelections);
 
-  // Abre modal de envio
+  // ENVIAR → modal e ações
   $("#btnSendSheets").addEventListener("click", openSheetsModal);
-  // Confirma envio a partir do modal
+  $("#sheetUrl").addEventListener("change", listTabsFromUrl);
+  $("#sheetUrl").addEventListener("blur", listTabsFromUrl);
   $("#btnDoSend").addEventListener("click", doSendToSheets);
 
-  // Carrega histórico “anon” (rascunho) até o usuário logar
+  // IMPORTAR (LER DO SHEETS) → modal e ações
+  $("#btnLoadSheets").addEventListener("click", openImportModal);
+  $("#importUrl").addEventListener("change", listTabsFromUrlForImport);
+  $("#importUrl").addEventListener("blur", listTabsFromUrlForImport);
+  $("#btnDoImport").addEventListener("click", doImportFromSheets);
+
+  // Onboarding
+  $("#btnHelp").addEventListener("click", openAsk);
+  $("#fabHelp").addEventListener("click", openAsk);
+  $("#btnAskYes").addEventListener("click", ()=>{ try{localStorage.setItem(onboardingKey(),'1');}catch(_){ } closeModal(); });
+  $("#btnAskNo").addEventListener("click", openTut);
+  $("#btnTutPrev").addEventListener("click", ()=>{ if(tutIndex>0){ tutIndex--; renderTut(); } });
+  $("#btnTutNext").addEventListener("click", ()=>{ if(tutIndex<TUTORIAL_STEPS.length-1){ tutIndex++; renderTut(); } });
+  $("#btnTutDone").addEventListener("click", finishTut);
+
+  // Rascunho local até logar
   loadHistoryForCurrentUser();
 
-  const last = JSON.parse(localStorage.getItem('last_base_info') || 'null');
+  // Info última base (cosmético)
+  const last = JSON.parse(localStorage.getItem(LS_LAST_BASE) || 'null');
   if (last) {
     const when = new Date(last.when || Date.now()).toLocaleString();
-    $("#baseInfo").textContent =
-      `${last.rows} linhas carregadas (última: ${last.name} em ${when})`;
+    $("#baseInfo").textContent = `${last.rows} linhas carregadas (última: ${last.name} em ${when})`;
   }
 });
+
+/* ===== Tutorial ===== */
+const TUTORIAL_STEPS = [
+  { t:'1) Carregar planilha', h:`Use <b>Arraste ou clique</b> e o botão <b>Carregar planilha</b>. Por padrão usamos a aba <b>Planilha1</b> (ou a primeira). Você também pode usar <b>Ler do Sheets</b> para puxar direto da aba <b>Calculation Tasks (CTs)</b>.` },
+  { t:'2) Buscar um BRS', h:`No campo de busca, <b>bipe</b> ou digite o BRS e pressione Enter. À esquerda aparecem os <b>detalhes</b> (BRS, Rota, Bairro, Veículo, AT) e o <b>endereço</b>.` },
+  { t:'3) Rotas do mesmo bairro', h:`À direita listamos as <b>rotas com o mesmo Neighborhood</b>. Use os filtros por <b>Planned Vehicle Type</b>. Quando houver <b>poucos pacotes</b> em uma rota, aparece um aviso ⚠️.` },
+  { t:'4) Adicionar e revisar', h:`Clique em <b>Adicionar nesta rota</b> para montar a realocação. A tabela <b>Realocações selecionadas</b> mantém os itens. Você pode <b>remover</b> ou <b>limpar</b>; os itens ficam salvos por usuário.` },
+  { t:'5) Exportar ou Enviar para Sheets', h:`Use <b>Exportar (.xlsx)</b> ou <b>Enviar p/ Sheets</b>. Enviamos <b>somente BR e AT</b> (sem cabeçalho). O histórico de envios fica no final.` },
+  { t:'6) Permissões úteis', h:`Para ler/enviar, sua conta deve ter acesso à planilha (mínimo: leitura para ler, edição para enviar). O acesso pode ser restrito a <code>@shopee.com</code>.` }
+];
+let tutIndex = 0;
+function renderTut(){
+  const body = $("#tutBody");
+  const dots = $("#tutDots");
+  const step = TUTORIAL_STEPS[tutIndex];
+  body.innerHTML = `<h3 style="margin-bottom:6px">${step.t}</h3><p>${step.h}</p>`;
+  dots.innerHTML = TUTORIAL_STEPS.map((_,i)=>`<span class="dot ${i===tutIndex?'active':''}"></span>`).join('');
+  $("#btnTutPrev").style.visibility = tutIndex===0?'hidden':'visible';
+  $("#btnTutNext").style.display = tutIndex===TUTORIAL_STEPS.length-1?'none':'inline-block';
+  $("#btnTutDone").style.display = tutIndex===TUTORIAL_STEPS.length-1?'inline-block':'none';
+}
+function openAsk(){ openModal(askModal); }
+function openTut(){ tutIndex=0; renderTut(); openModal(tutModal); }
+function finishTut(){ try{ localStorage.setItem(onboardingKey(),'1'); }catch(_){ } closeModal(); }
+function maybeShowOnboarding(){
+  try{ if(!localStorage.getItem(onboardingKey())) openAsk(); }catch(_){ openAsk(); }
+}
 </script>
 </body>
 </html>
