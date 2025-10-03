@@ -211,40 +211,65 @@
 /* ====== OAuth (GIS) ====== */
 const CLIENT_ID = '800747129509-98obq6okp3t6prjr9u1j2m5od2ip857n.apps.googleusercontent.com';
 const SCOPES = 'openid email https://www.googleapis.com/auth/spreadsheets';
-const ENFORCE_SHOPEE = true; // coloque false se não quiser travar por domínio
+const ENFORCE_SHOPEE = true; // false para não travar domínio
 
 let accessToken = null;
 let tokenClient = null;
 
+// Inicializa o tokenClient quando o script do GIS terminar de carregar
 window.onload = () => {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    // hd: 'shopee.com', // apenas sugestão visual
-    callback: async (resp) => {
-      if (resp.error) { alert('Erro OAuth: ' + resp.error); return; }
-      accessToken = resp.access_token;
+  if (window.google?.accounts?.oauth2) {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      // hd: 'shopee.com', // apenas sugestão visual
+      callback: async (resp) => {
+        if (resp.error) { alert('Erro OAuth: ' + resp.error); return; }
+        accessToken = resp.access_token;
 
-      try{
-        if (ENFORCE_SHOPEE) await gatekeepShopee(accessToken);
-      }catch(e){
-        alert(e.message || e);
-        return;
+        try{
+          if (ENFORCE_SHOPEE) await gatekeepShopee(accessToken);
+        }catch(e){
+          alert(e.message || e);
+          google.accounts.oauth2.revoke(accessToken);
+          accessToken = null;
+          return;
+        }
       }
-      // habilita botões que usam Sheets
-      document.querySelector('#btnSendSheets').disabled = false;
-    }
-  });
+    });
+  }
 };
 
+// ensureAuth robusta: cria tokenClient se faltar e abre popup quando necessário
 async function ensureAuth(){
-  return new Promise((resolve) => {
-    if (accessToken) return resolve(true);
+  if (!tokenClient) {
+    if (!window.google || !google.accounts || !google.accounts.oauth2) {
+      alert('Google Identity ainda não carregou. Tente novamente em 1–2 segundos.');
+      throw new Error('GIS não carregado');
+    }
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: () => {} // será sobrescrito abaixo
+    });
+  }
+
+  if (accessToken) return true;
+
+  return new Promise((resolve, reject) => {
+    tokenClient.callback = async (resp) => {
+      if (resp.error) return reject(resp);
+      accessToken = resp.access_token;
+      try {
+        if (ENFORCE_SHOPEE) await gatekeepShopee(accessToken);
+        resolve(true);
+      } catch (e) {
+        google.accounts.oauth2.revoke(accessToken);
+        accessToken = null;
+        reject(e);
+      }
+    };
     tokenClient.requestAccessToken({ prompt: 'consent' });
-    // o callback acima habilita o token
-    const chk = setInterval(()=>{
-      if(accessToken){ clearInterval(chk); resolve(true); }
-    }, 200);
   });
 }
 
@@ -260,8 +285,6 @@ async function getUserEmail(token){
 async function gatekeepShopee(token){
   const email = await getUserEmail(token);
   if (!email.endsWith('@shopee.com')) {
-    google.accounts.oauth2.revoke(token);
-    accessToken = null;
     throw new Error('Acesso permitido apenas para contas @shopee.com');
   }
 }
@@ -669,7 +692,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   $("#btnExport").addEventListener("click", exportSelections);
   $("#btnClearSel").addEventListener("click", clearSelections);
   $("#btnSendSheets").addEventListener("click", sendSelectionsToSheets);
-  $("#btnSendSheets").disabled = true; // habilita após OAuth
+  // botão fica habilitado sempre; ensureAuth() cuida do login no clique
 
   const last = JSON.parse(localStorage.getItem('last_base_info')||'null');
   if(last){
