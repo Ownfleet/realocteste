@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SPR • Realocamento de Pacotes</title>
+
+  <!-- SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Google Identity Services (OAuth popup) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    :root{
+      --primary:#ff5722; --primary-2:#e14d1f;
+      --bg:#f7f7f7; --card:#fff; --txt:#222; --muted:#666;
+      --ok:#18a957; --err:#d7263d; --chip:#ffe8e0; --line:#eaeaea;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      background:var(--bg);color:var(--txt);
+      font:500 15px/1.38 system-ui,Segoe UI,Roboto,Helvetica,Arial;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      display:flex;flex-direction:column;min-height:100vh;
+    }
+    .wrap{max-width:1200px;margin:16px auto;padding:0 12px;flex:1}
+
+    .card{
+      background:var(--card);border-radius:14px;
+      box-shadow:0 5px 16px rgba(0,0,0,.05);
+      padding:14px;transition:transform .12s,box-shadow .12s;
+    }
+    .card:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(0,0,0,.08)}
+
+    .btn{
+      padding:10px 14px;border:0;border-radius:10px;background:var(--primary);
+      color:#fff;font-weight:800;letter-spacing:.2px;cursor:pointer;
+      transition:background .12s,transform .06s,box-shadow .12s;
+      box-shadow:0 3px 10px rgba(255,87,34,.22)
+    }
+    .btn:hover{background:var(--primary-2)} .btn:active{transform:scale(.985)}
+    .btn.small{padding:8px 12px;border-radius:10px;font-weight:800}
+    .btn.secondary{background:#2f2f2f;box-shadow:0 3px 10px rgba(0,0,0,.18)}
+    .btn.secondary:hover{background:#000}
+    .btn.ghost{background:#fff;color:#333;border:2px solid #e8e8e8;box-shadow:none}
+
+    .uploader{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .file{
+      display:inline-flex;align-items:center;justify-content:center;min-width:230px;height:40px;
+      padding:0 12px;border:2px dashed #ddd;border-radius:10px;background:#fff;color:#444;
+      cursor:pointer;transition:border-color .12s,box-shadow .12s,color .12s;font-weight:800
+    }
+    .file:hover{border-color:var(--primary);color:var(--primary)}
+    .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)}
+    .chip{background:var(--chip);padding:3px 8px;border-radius:999px;font-size:12px}
+    .label-strong{font-weight:900;margin:2px 0 6px}
+
+    .grid{display:grid;gap:12px}
+    @media(min-width:980px){ .grid{grid-template-columns:1fr 1fr} }
+
+    .scanbar{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+    .scanbar input{
+      flex:1;min-width:220px;padding:12px;border:2px solid #e8e8e8;border-radius:10px;font-size:16px;outline:none;background:#fff;
+      transition:border-color .12s,box-shadow .12s,transform .06s;
+    }
+    .scanbar input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(255,87,34,.12)}
+    .scanbar input:active{transform:scale(.999)}
+
+    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:8px;align-items:stretch}
+    .kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;justify-content:space-between;min-height:72px}
+    .kpi .label{color:var(--muted);font-size:11px;letter-spacing:.35px;text-transform:uppercase;line-height:1;opacity:.95}
+    .kpi .value{margin-top:4px;font-size:18px;font-weight:900;line-height:1.1;white-space:normal;font-variant-numeric:tabular-nums}
+    .kpi .value.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
+
+    .tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;font-size:13.5px}
+    th{color:var(--muted);font-weight:800;background:#fafafa;position:sticky;top:0}
+    tbody tr{transition:background .12s} tbody tr:hover td{background:#fff5f2}
+
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .danger{background:#fef2f2;border:1px solid #fde4e4}
+
+    footer{
+      text-align:center;
+      padding:10px;
+      font-size:13px;
+      color:var(--muted);
+      border-top:1px solid #eaeaea;
+      margin-top:16px;
+    }
+    footer b{color:var(--primary)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Uploader -->
+  <section class="card">
+    <div class="uploader">
+      <label class="file dropzone" id="dropzone" for="file">Arraste ou clique para selecionar</label>
+      <input id="file" type="file" accept=".xlsx,.xls" style="display:none" />
+      <button class="btn" id="btnLoad">Carregar planilha</button>
+      <button class="btn secondary" id="btnReset" title="Limpa base e resultados">Limpar base</button>
+      <div id="loadMsg" class="muted">Aba padrão: <b>Planilha1</b></div>
+    </div>
+  </section>
+
+  <div class="grid" style="margin-top:12px">
+    <!-- COLUNA ESQUERDA -->
+    <section class="card">
+      <div class="uploader" style="justify-content:space-between">
+        <div><b>Base:</b> <span id="baseInfo" class="muted">nenhuma carregada</span></div>
+        <div class="muted" id="sheetInfo"></div>
+      </div>
+
+      <div class="scanbar">
+        <input id="scan" placeholder="Bipe/insira o BRS... (Enter)" autocomplete="off" disabled />
+        <button class="btn" id="btnScan" disabled>Bipar</button>
+      </div>
+      <div id="scanMsg" class="muted" style="margin-top:6px">Carregue a planilha para habilitar a busca.</div>
+
+      <div id="resultLeft" style="margin-top:10px; display:none">
+        <div class="kpis">
+          <div class="kpi"><div class="label">BRS</div><div class="value mono" id="kBRS">—</div></div>
+          <div class="kpi"><div class="label">Corridor Cage</div><div class="value" id="kRota">—</div></div>
+          <div class="kpi"><div class="label">Bairro</div><div class="value" id="kBairro">—</div></div>
+          <div class="kpi"><div class="label">Planned Vehicle Type</div><div class="value" id="kVeiculo">—</div></div>
+          <div class="kpi"><div class="label">AT (Planned)</div><div class="value mono" id="kAT">—</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUNA DIREITA -->
+    <aside class="card" id="rightPane">
+      <div id="resultRight" style="display:none">
+        <div>
+          <div class="label-strong">Endereço (Destination Address)</div>
+          <div id="kEndereco" class="card" style="padding:10px;border:1px solid #eee"></div>
+        </div>
+
+        <div id="filterBar" style="margin-top:12px; display:none">
+          <div class="label-strong">Filtrar por <span class="chip">Planned Vehicle Type</span></div>
+          <div id="vehicleChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn secondary small" id="btnAll">Selecionar todos</button>
+            <button class="btn secondary small" id="btnNone">Limpar</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="label-strong">Rotas com o mesmo <span class="chip">Neighborhood</span></div>
+          <div class="muted" id="sameInfo">—</div>
+          <div class="tbl-wrap" style="margin-top:6px">
+            <table id="sameTable">
+              <thead>
+                <tr>
+                  <th>Corridor Cage</th>
+                  <th>Bairro</th>
+                  <th>Veículo</th>
+                  <th>Qtd. Pacotes (Total)</th>
+                  <th>Quantidade no bairro</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="placeholderRight" class="muted">Bipe um BRS para ver endereço, filtrar e listar as rotas do mesmo bairro.</div>
+    </aside>
+  </div>
+
+  <!-- SELEÇÕES / REALOCAÇÕES -->
+  <section class="card" style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="label-strong">Realocações selecionadas</div>
+      <div class="actions">
+        <button class="btn small ghost" id="btnClearSel" title="Limpar tabela">Limpar</button>
+        <button class="btn small" id="btnExport">Exportar (.xlsx)</button>
+        <button class="btn small" id="btnSendSheets" title="Enviar para Google Sheets">Enviar p/ Sheets</button>
+      </div>
+    </div>
+    <div class="muted" id="selInfo" style="margin-top:6px">Sem itens.</div>
+    <div class="tbl-wrap" style="margin-top:6px">
+      <table id="selTable">
+        <thead>
+          <tr>
+            <th>BR &amp; Protocolo</th>
+            <th>AT &amp; Protocolo</th>
+            <th>Rota</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Criado por <b>Richard Lucas – LSP 12 Adriana</b>
+</footer>
+
+<script>
+/* ====== OAuth (GIS) ====== */
+const CLIENT_ID = '800747129509-98obq6okp3t6prjr9u1j2m5od2ip857n.apps.googleusercontent.com';
+const SCOPES = 'openid email https://www.googleapis.com/auth/spreadsheets';
+const ENFORCE_SHOPEE = true; // coloque false se não quiser travar por domínio
+
+let accessToken = null;
+let tokenClient = null;
+
+window.onload = () => {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    // hd: 'shopee.com', // apenas sugestão visual
+    callback: async (resp) => {
+      if (resp.error) { alert('Erro OAuth: ' + resp.error); return; }
+      accessToken = resp.access_token;
+
+      try{
+        if (ENFORCE_SHOPEE) await gatekeepShopee(accessToken);
+      }catch(e){
+        alert(e.message || e);
+        return;
+      }
+      // habilita botões que usam Sheets
+      document.querySelector('#btnSendSheets').disabled = false;
+    }
+  });
+};
+
+async function ensureAuth(){
+  return new Promise((resolve) => {
+    if (accessToken) return resolve(true);
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+    // o callback acima habilita o token
+    const chk = setInterval(()=>{
+      if(accessToken){ clearInterval(chk); resolve(true); }
+    }, 200);
+  });
+}
+
+async function getUserEmail(token){
+  const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!r.ok) throw new Error('Falha ao obter userinfo');
+  const data = await r.json();
+  return String(data.email||'').toLowerCase();
+}
+
+async function gatekeepShopee(token){
+  const email = await getUserEmail(token);
+  if (!email.endsWith('@shopee.com')) {
+    google.accounts.oauth2.revoke(token);
+    accessToken = null;
+    throw new Error('Acesso permitido apenas para contas @shopee.com');
+  }
+}
+
+/* ========= Utilidades ========= */
+const stripAccents = (s='') => String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'');
+const norm = (s='') => stripAccents(String(s).trim()).toLowerCase();
+const normBRS = (s='') => String(s).toUpperCase().replace(/[^A-Z0-9]/g,'');
+const isExcel = f => /\.(xlsx|xls)$/i.test(f?.name||'');
+const $ = s => document.querySelector(s);
+function focusScan(){ setTimeout(()=>$("#scan").focus(), 0); }
+
+/* ========= Mapeamento/normalização ========= */
+const COLS_EXT = {
+  brs:        ['SPX TN','BRS','Codigo','Código','Code','Tracking','AWB'],
+  endereco:   ['Destination Address','Address','REGIAO','REGIÃO'],
+  bairro:     ['Neighborhood','BAIRRO','Bairro'],
+  plannedAt:  ['AT & Protocolo','AT (Planned)','Planned AT','Delivery Time','PlannedAT','AT','Planned_At'],
+  veiculo:    ['Planned Vehicle Type','Location Type','Tipo de veículo','Veiculo','Vehicle Type','Tipo'],
+  cluster:    ['Corridor Cage','Cluster','Rota','Route','Route Name','Cluster Name']
+};
+function pick(row, names){
+  for(const candidate of names){
+    const exact = row[candidate];
+    if(exact !== undefined && exact !== null && exact !== '') return String(exact).trim();
+    const target = norm(candidate);
+    for(const k of Object.keys(row)){
+      if(norm(k) === target){
+        const val = row[k];
+        if(val !== undefined && val !== null && val !== '') return String(val).trim();
+      }
+    }
+  }
+  return '';
+}
+
+/* ========= Estado ========= */
+let BASE_ROWS = [];
+let INDEX_BRS = new Map();
+let INDEX_BAIRRO_CLUSTER = new Map();
+let INDEX_TOTAL_BY_CAGE = new Map();
+let VEH_TYPES = [];
+let VEH_FILTER = new Set();
+let LAST_ROW = null;
+let LAST_SAME = [];
+let SELECTED = []; // {brs, at, rota}
+
+/* ========= Excel ========= */
+function parseSheetToObjects(ws){
+  const json = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false});
+  return json.map(r=>{ const o={}; Object.keys(r).forEach(k=>{ o[String(k).trim()] = r[k]; }); return o; });
+}
+function formatMaybeDate(v){
+  if(!v) return '';
+  if(/^\d+(\.\d+)?$/.test(String(v))){
+    try{
+      const date = XLSX.SSF.parse_date_code(Number(v));
+      if(date){
+        const js = new Date(Date.UTC(date.y, date.m-1, date.d, date.H||0, date.M||0, Math.floor(date.S||0)));
+        return js.toLocaleString();
+      }
+    }catch(e){}
+  }
+  return String(v);
+}
+function normalizeFromExt(row){
+  const out = {
+    brs:      pick(row, COLS_EXT.brs),
+    endereco: pick(row, COLS_EXT.endereco),
+    bairro:   pick(row, COLS_EXT.bairro),
+    at:       pick(row, COLS_EXT.plannedAt),
+    veiculo:  pick(row, COLS_EXT.veiculo),
+    rota:     pick(row, COLS_EXT.cluster)
+  };
+  if(/^\d+(\.\d+)?$/.test(out.at)) out.at = formatMaybeDate(out.at);
+  return out;
+}
+
+/* ========= Índices ========= */
+function buildIndexes(){
+  INDEX_BRS.clear(); INDEX_BAIRRO_CLUSTER.clear(); INDEX_TOTAL_BY_CAGE.clear();
+  for(const r of BASE_ROWS){
+    if(r.brs) INDEX_BRS.set(normBRS(r.brs), r);
+
+    if(r.bairro){
+      const keyB = stripAccents(String(r.bairro)).trim();
+      if(!INDEX_BAIRRO_CLUSTER.has(keyB)) INDEX_BAIRRO_CLUSTER.set(keyB, new Map());
+      const mapC = INDEX_BAIRRO_CLUSTER.get(keyB);
+      const keyC = r.rota || '(sem rota)';
+      if(!mapC.has(keyC)) mapC.set(keyC, []);
+      mapC.get(keyC).push(r);
+    }
+    const cage = r.rota || '(sem rota)';
+    INDEX_TOTAL_BY_CAGE.set(cage, (INDEX_TOTAL_BY_CAGE.get(cage)||0) + 1);
+  }
+}
+
+/* ========= Filtro de veículos ========= */
+function rebuildVehicleFilterFromBase(){
+  const set = new Set();
+  for(const r of BASE_ROWS){ if(r.veiculo){ set.add(String(r.veiculo).trim()); } }
+  VEH_TYPES = Array.from(set).sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
+  const saved = JSON.parse(localStorage.getItem('veh_filter')||'null');
+  VEH_FILTER = new Set(Array.isArray(saved) ? saved : VEH_TYPES);
+  renderFilterUI();
+}
+function renderFilterUI(){
+  const bar  = $("#filterBar");
+  const wrap = $("#vehicleChips");
+  wrap.innerHTML = "";
+  VEH_TYPES.forEach(t=>{
+    const id = 'veh_'+t.replace(/\W+/g,'_');
+    const label = document.createElement('label');
+    label.className = 'chipCheck';
+    label.innerHTML = `<input type="checkbox" id="${id}" value="${t}" ${VEH_FILTER.has(t)?'checked':''}><span>${t}</span>`;
+    wrap.appendChild(label);
+    label.querySelector('input').addEventListener('change', e=>{
+      if(e.target.checked) VEH_FILTER.add(t); else VEH_FILTER.delete(t);
+      localStorage.setItem('veh_filter', JSON.stringify(Array.from(VEH_FILTER)));
+      rerenderSame();
+    });
+  });
+  bar.style.display = VEH_TYPES.length ? 'block' : 'none';
+
+  $("#btnAll").onclick = ()=>{ VEH_FILTER = new Set(VEH_TYPES); persistAndSync(); };
+  $("#btnNone").onclick= ()=>{ VEH_FILTER.clear(); persistAndSync(); };
+  function persistAndSync(){
+    localStorage.setItem('veh_filter', JSON.stringify(Array.from(VEH_FILTER)));
+    wrap.querySelectorAll('input[type="checkbox"]').forEach(ch=> ch.checked = VEH_FILTER.has(ch.value));
+    rerenderSame();
+  }
+}
+
+/* ========= Carregar arquivo ========= */
+async function handleLoad(inputFile){
+  const file = inputFile || $("#file").files[0];
+  if(!file){ $("#loadMsg").innerHTML = '<span class="err">Selecione um arquivo .xlsx</span>'; return; }
+  if(!isExcel(file)){ $("#loadMsg").innerHTML = '<span class="err">Arquivo inválido. Use .xlsx/.xls</span>'; return; }
+  $("#loadMsg").textContent = 'Lendo arquivo...';
+
+  try{
+    const buf = await file.arrayBuffer();
+    const wb  = XLSX.read(buf, {type:'array'});
+    let extName = wb.SheetNames.find(n => n.trim().toLowerCase() === 'planilha1') || wb.SheetNames[0];
+    const wsExt = wb.Sheets[extName];
+    const rowsExt = parseSheetToObjects(wsExt);
+
+    BASE_ROWS = rowsExt.map(normalizeFromExt).filter(r=>r.brs);
+    buildIndexes();
+    rebuildVehicleFilterFromBase();
+
+    $("#baseInfo").textContent = `${BASE_ROWS.length} linhas carregadas`;
+    $("#sheetInfo").textContent = `Aba usada: ${extName}`;
+    $("#scan").disabled = false; $("#btnScan").disabled = false;
+    $("#scanMsg").innerHTML = '<span class="ok">Base carregada! Já pode bipar.</span>';
+
+    const when = new Date().toLocaleString();
+    $("#loadMsg").innerHTML = `<span class="ok">Arquivo "<b>${file.name}</b>" lido (${BASE_ROWS.length} linhas) em ${when}.</span>`;
+    localStorage.setItem('last_base_info', JSON.stringify({name:file.name, rows:BASE_ROWS.length, when:Date.now()}));
+    focusScan();
+  }catch(e){
+    $("#loadMsg").innerHTML = `<span class="err">Falha ao ler o Excel: ${e.message}</span>`;
+  }
+}
+
+/* ========= Helpers ========= */
+function pickRepresentativeAT(rows){
+  const freq = new Map();
+  for(const r of rows){
+    const key = (r.at || '').trim();
+    if(!key) continue;
+    freq.set(key, (freq.get(key)||0) + 1);
+  }
+  let best = '', bestN = -1;
+  for(const [k,v] of freq.entries()){ if(v>bestN){ best=k; bestN=v; } }
+  return best || (rows[0]?.at || '');
+}
+
+/* ========= Busca e render ========= */
+function findSameNeighborhoodGrouped(bairro){
+  const key = stripAccents(String(bairro||'').trim());
+  const mapC = INDEX_BAIRRO_CLUSTER.get(key);
+  if(!mapC) return [];
+  return Array.from(mapC.entries()).map(([cage,rows])=>({cage,rows}));
+}
+
+function renderResult(row, same){
+  const sameFiltered = same
+    .filter(g => (g.cage||'') !== (row.rota||'')) 
+    .filter(g => !VEH_FILTER.size || VEH_FILTER.has((g.rows[0].veiculo||'').trim()));
+
+  $("#resultLeft").style.display="block";
+  $("#resultRight").style.display="block";
+  $("#placeholderRight").style.display="none";
+
+  $("#kBRS").textContent = row.brs || '—';
+  $("#kRota").textContent = row.rota || '—';
+  $("#kBairro").textContent = row.bairro || '—';
+  $("#kVeiculo").textContent = row.veiculo || '—';
+  $("#kAT").textContent = row.at || '—';
+
+  $("#kEndereco").textContent = row.endereco || '—';
+
+  const tbody = $("#sameTable tbody"); tbody.innerHTML = "";
+  sameFiltered.forEach(g=>{
+    const qtdNoBairro = g.rows.length;
+    const veiculo = g.rows[0].veiculo || '—';
+    const isFiorino = /fiorino/i.test(veiculo);
+
+    const totalCage = INDEX_TOTAL_BY_CAGE.get(g.cage) || qtdNoBairro;
+
+    let statusHtml = '';
+    if(qtdNoBairro <= 3 && !isFiorino){
+      statusHtml = `<span class="err">⚠️ ${qtdNoBairro}</span>`;
+    }else{
+      statusHtml = `<span class="ok">${qtdNoBairro}</span>`;
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="chip">${g.cage}</span></td>
+      <td>${row.bairro}</td>
+      <td>${veiculo}</td>
+      <td>${totalCage}</td>
+      <td>${statusHtml}</td>
+      <td><button class="btn small" data-cage="${g.cage}">Adicionar nesta rota</button></td>
+    `;
+    tr.querySelector('button').addEventListener('click', ()=>{
+      if(!LAST_ROW) return;
+      const atTarget = pickRepresentativeAT(g.rows);
+      addSelection({ brs: LAST_ROW.brs, at: atTarget, rota: g.cage });
+    });
+    tbody.appendChild(tr);
+  });
+
+  $("#sameInfo").textContent = sameFiltered.length
+    ? `Encontradas ${sameFiltered.length} rotas com o mesmo Neighborhood.`
+    : "Nenhuma outra rota com o mesmo Neighborhood.";
+}
+
+function rerenderSame(){
+  if(!LAST_ROW) return;
+  renderResult(LAST_ROW, LAST_SAME);
+}
+
+/* ========= Seleções / Realocações ========= */
+function renderSelections(){
+  const tbody = $("#selTable tbody");
+  tbody.innerHTML = "";
+  SELECTED.forEach((it, idx)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="mono">${it.brs||'—'}</td>
+      <td class="mono">${it.at||'—'}</td>
+      <td>${it.rota||'—'}</td>
+      <td><button class="btn small ghost danger" title="Remover">✕</button></td>
+    `;
+    tr.querySelector('button').addEventListener('click', ()=>{
+      SELECTED.splice(idx,1);
+      renderSelections();
+    });
+    tbody.appendChild(tr);
+  });
+  $("#selInfo").textContent = SELECTED.length ? `${SELECTED.length} item(ns)` : 'Sem itens.';
+}
+function addSelection({brs, at, rota}){ SELECTED.push({brs, at, rota}); renderSelections(); }
+function clearSelections(){ SELECTED = []; renderSelections(); }
+
+function exportSelections(){
+  if(!SELECTED.length){ alert('Nada para exportar.'); return; }
+  const header = ['BR & Protocolo','AT & Protocolo','Rota'];
+  const rows = SELECTED.map(it=>[it.brs||'', it.at||'', it.rota||'']);
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Realocacoes');
+  XLSX.writeFile(wb, `realocacoes_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+/* ========= Google Sheets (REST) ========= */
+function parseSpreadsheetId(url){
+  const m = String(url).match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  return m ? m[1] : null;
+}
+function parseGid(url){
+  const m = String(url).match(/[?&#]gid=(\d+)/);
+  return m ? parseInt(m[1],10) : null;
+}
+async function gidToSheetTitle(spreadsheetId, gid){
+  if(gid === null || gid === undefined) return null;
+  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if(!res.ok) return null;
+  const data = await res.json();
+  const sheet = (data.sheets||[]).find(s => s.properties && s.properties.sheetId === gid);
+  return sheet ? sheet.properties.title : null;
+}
+
+async function sendSelectionsToSheets(){
+  if(!SELECTED.length){ alert('Nenhuma realocação na tabela.'); return; }
+
+  const link = prompt('Cole o link da planilha do Google Sheets (URL completa):');
+  if(!link) return;
+  const spreadsheetId = parseSpreadsheetId(link);
+  if(!spreadsheetId){ alert('Link inválido. Precisa ser de uma planilha do Google (docs.google.com/spreadsheets/...)'); return; }
+
+  await ensureAuth();
+
+  let range = null;
+  try{
+    const gid = parseGid(link);
+    if(gid !== null){
+      const title = await gidToSheetTitle(spreadsheetId, gid);
+      if(title) range = `${title}!A1`;
+    }
+  }catch(e){ /* segue para perguntar o range */ }
+
+  if(!range){
+    range = prompt('Informe a aba/range de destino (ex.: Página1!A1):', 'Página1!A1');
+    if(!range) return;
+  }
+
+  // prepara valores: cabeçalho + linhas
+  const values = [
+    ['BR & Protocolo','AT & Protocolo','Rota'],
+    ...SELECTED.map(it=>[it.brs||'', it.at||'', it.rota||''])
+  ];
+
+  const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+
+  try{
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ values })
+    });
+    if(!res.ok){
+      const txt = await res.text();
+      throw new Error(txt);
+    }
+    alert('Enviado com sucesso para o Sheets!');
+  }catch(err){
+    console.error(err);
+    alert('Falha ao enviar para o Sheets. Verifique permissões e se a API do Sheets está ativa.');
+  }
+}
+
+/* ========= Ações ========= */
+function handleScan(){
+  const input = $("#scan");
+  const code = input.value.trim();
+  if(!code){ $("#scanMsg").innerHTML = '<span class="err">Digite/escaneie um BRS.</span>'; return; }
+  if(!INDEX_BRS.size){ $("#scanMsg").innerHTML = '<span class="err">Carregue a base primeiro.</span>'; return; }
+
+  const row = INDEX_BRS.get(normBRS(code));
+  if(!row){ $("#scanMsg").innerHTML = '<span class="err">Código não encontrado na base.</span>'; input.value=''; focusScan(); return; }
+
+  const same = findSameNeighborhoodGrouped(row.bairro);
+  LAST_ROW = row; LAST_SAME = same;
+
+  renderResult(row, same);
+  $("#scanMsg").innerHTML = '<span class="ok">Pesquisa concluída.</span>';
+  input.value=''; focusScan();
+}
+
+function resetBase(){
+  BASE_ROWS = []; INDEX_BRS.clear(); INDEX_BAIRRO_CLUSTER.clear(); INDEX_TOTAL_BY_CAGE.clear();
+  LAST_ROW=null; LAST_SAME=[];
+  $("#baseInfo").textContent = 'nenhuma carregada';
+  $("#sheetInfo").textContent = '';
+  $("#scan").disabled = true; $("#btnScan").disabled = true; $("#scan").value='';
+  $("#resultLeft").style.display='none';
+  $("#resultRight").style.display='none';
+  $("#placeholderRight").style.display='block';
+  $("#scanMsg").textContent = 'Carregue a planilha para habilitar a busca.';
+  clearSelections();
+}
+
+/* ========= Drag & Drop ========= */
+(function setupDnd(){
+  const dz = document.getElementById('dropzone');
+  const input = document.getElementById('file');
+  const prevent = e=>{e.preventDefault(); e.stopPropagation();};
+  ['dragenter','dragover','dragleave','drop'].forEach(ev=> dz.addEventListener(ev, prevent));
+  dz.addEventListener('dragenter', ()=> dz.classList.add('dragover'));
+  dz.addEventListener('dragover',  ()=> dz.classList.add('dragover'));
+  dz.addEventListener('dragleave', ()=> dz.classList.remove('dragover'));
+  dz.addEventListener('drop', (e)=>{
+    dz.classList.remove('dragover');
+    const f = e.dataTransfer?.files?.[0];
+    if(f){ input.files = e.dataTransfer.files; handleLoad(f); }
+  });
+})();
+
+/* ========= Listeners ========= */
+document.addEventListener('DOMContentLoaded', ()=>{
+  $("#btnLoad").addEventListener("click", ()=>handleLoad());
+  $("#btnScan").addEventListener("click", handleScan);
+  $("#scan").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); handleScan(); } });
+  $("#btnReset").addEventListener("click", resetBase);
+
+  $("#btnExport").addEventListener("click", exportSelections);
+  $("#btnClearSel").addEventListener("click", clearSelections);
+  $("#btnSendSheets").addEventListener("click", sendSelectionsToSheets);
+  $("#btnSendSheets").disabled = true; // habilita após OAuth
+
+  const last = JSON.parse(localStorage.getItem('last_base_info')||'null');
+  if(last){
+    const when = new Date(last.when||Date.now()).toLocaleString();
+    $("#baseInfo").textContent = `${last.rows} linhas carregadas (última: ${last.name} em ${when})`;
+  }
+});
+</script>
+</body>
+</html>
