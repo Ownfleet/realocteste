@@ -17,6 +17,7 @@
       --primary:#ff5722; --primary-2:#e14d1f;
       --bg:#f7f7f7; --card:#fff; --txt:#222; --muted:#666;
       --ok:#18a957; --err:#d7263d; --chip:#ffe8e0; --line:#eaeaea;
+      --overlay: rgba(0,0,0,.35);
     }
     *{box-sizing:border-box;margin:0;padding:0}
     body{
@@ -45,6 +46,8 @@
     .btn.secondary{background:#2f2f2f;box-shadow:0 3px 10px rgba(0,0,0,.18)}
     .btn.secondary:hover{background:#000}
     .btn.ghost{background:#fff;color:#333;border:2px solid #e8e8e8;box-shadow:none}
+    .btn.cancel{background:#e8e8e8;color:#222;box-shadow:none}
+    .btn.full{width:100%}
 
     .uploader{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .file{
@@ -92,6 +95,30 @@
       margin-top:16px;
     }
     footer b{color:var(--primary)}
+
+    /* ========== Modal ========== */
+    .modal-overlay{
+      position:fixed;inset:0;background:var(--overlay);
+      display:none;align-items:center;justify-content:center;z-index:50;
+      padding:16px;
+    }
+    .modal{
+      background:#fff;border-radius:16px;max-width:520px;width:100%;
+      box-shadow:0 15px 40px rgba(0,0,0,.18);overflow:hidden;
+      animation:pop .15s ease-out;
+    }
+    @keyframes pop{from{transform:scale(.98);opacity:.8}to{transform:scale(1);opacity:1}}
+    .modal header{padding:14px 16px;border-bottom:1px solid #eee;font-weight:900}
+    .modal .content{padding:14px 16px;line-height:1.45}
+    .modal .content p{margin:6px 0}
+    .modal .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .modal .field{display:flex;flex-direction:column;gap:6px;flex:1}
+    .modal input{
+      padding:10px;border:2px solid #eee;border-radius:10px;font-size:14px;outline:none;background:#fff;
+    }
+    .modal input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(255,87,34,.12)}
+    .modal footer{display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #eee;padding:12px}
+    .hidden{display:none}
   </style>
 </head>
 <body>
@@ -207,6 +234,43 @@
   Criado por <b>Richard Lucas – LSP 12 Adriana</b>
 </footer>
 
+<!-- ========= Modals ========= -->
+<div id="overlay" class="modal-overlay">
+  <!-- info modal -->
+  <div id="infoModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+    <header id="infoTitle">Informação</header>
+    <div class="content" id="infoBody"></div>
+    <footer>
+      <button class="btn cancel" onclick="closeModal()">Fechar</button>
+    </footer>
+  </div>
+
+  <!-- sheets form modal -->
+  <div id="sheetsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="sheetsTitle">
+    <header id="sheetsTitle">Enviar para Google Sheets</header>
+    <div class="content">
+      <div class="field">
+        <label for="sheetUrl"><b>URL da planilha</b> (docs.google.com/spreadsheets/...)</label>
+        <input id="sheetUrl" placeholder="Cole aqui o link completo da planilha">
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="field">
+          <label for="sheetRange"><b>Aba/Range</b> (ex.: <code>Página1!A1</code>)</label>
+          <input id="sheetRange" placeholder="Página1!A1">
+        </div>
+      </div>
+      <p class="muted" style="margin-top:10px">
+        Serão enviados <b>apenas</b> as colunas <span class="chip">BR &amp; Protocolo</span> e
+        <span class="chip">AT &amp; Protocolo</span>.
+      </p>
+    </div>
+    <footer>
+      <button class="btn cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn" id="btnDoSend">Enviar</button>
+    </footer>
+  </div>
+</div>
+
 <script>
 /* ====== OAuth (GIS) ====== */
 const CLIENT_ID = '800747129509-98obq6okp3t6prjr9u1j2m5od2ip857n.apps.googleusercontent.com';
@@ -222,15 +286,14 @@ window.onload = () => {
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
       scope: SCOPES,
-      // hd: 'shopee.com', // apenas sugestão visual
       callback: async (resp) => {
-        if (resp.error) { alert('Erro OAuth: ' + resp.error); return; }
+        if (resp.error) { showInfo('Erro OAuth', 'Erro: ' + resp.error); return; }
         accessToken = resp.access_token;
 
         try{
           if (ENFORCE_SHOPEE) await gatekeepShopee(accessToken);
         }catch(e){
-          alert(e.message || e);
+          showInfo('Acesso negado', e.message || e);
           google.accounts.oauth2.revoke(accessToken);
           accessToken = null;
           return;
@@ -244,13 +307,13 @@ window.onload = () => {
 async function ensureAuth(){
   if (!tokenClient) {
     if (!window.google || !google.accounts || !google.accounts.oauth2) {
-      alert('Google Identity ainda não carregou. Tente novamente em 1–2 segundos.');
+      showInfo('Aguarde', 'Google Identity ainda não carregou. Tente novamente em 1–2 segundos.');
       throw new Error('GIS não carregado');
     }
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
       scope: SCOPES,
-      callback: () => {} // será sobrescrito abaixo
+      callback: () => {}
     });
   }
 
@@ -296,6 +359,25 @@ const normBRS = (s='') => String(s).toUpperCase().replace(/[^A-Z0-9]/g,'');
 const isExcel = f => /\.(xlsx|xls)$/i.test(f?.name||'');
 const $ = s => document.querySelector(s);
 function focusScan(){ setTimeout(()=>$("#scan").focus(), 0); }
+
+/* ========= Modal helpers ========= */
+const overlay = $("#overlay");
+const infoModal = $("#infoModal");
+const infoBody = $("#infoBody");
+const sheetsModal = $("#sheetsModal");
+function openModal(which){
+  overlay.style.display = 'flex';
+  [infoModal, sheetsModal].forEach(x=>x.classList.add('hidden'));
+  which.classList.remove('hidden');
+}
+function closeModal(){
+  overlay.style.display = 'none';
+}
+function showInfo(title, html){
+  $("#infoTitle").textContent = title || 'Informação';
+  infoBody.innerHTML = html || '';
+  openModal(infoModal);
+}
 
 /* ========= Mapeamento/normalização ========= */
 const COLS_EXT = {
@@ -421,8 +503,8 @@ function renderFilterUI(){
 /* ========= Carregar arquivo ========= */
 async function handleLoad(inputFile){
   const file = inputFile || $("#file").files[0];
-  if(!file){ $("#loadMsg").innerHTML = '<span class="err">Selecione um arquivo .xlsx</span>'; return; }
-  if(!isExcel(file)){ $("#loadMsg").innerHTML = '<span class="err">Arquivo inválido. Use .xlsx/.xls</span>'; return; }
+  if(!file){ showInfo('Arquivo', 'Selecione um arquivo <b>.xlsx</b>.'); return; }
+  if(!isExcel(file)){ showInfo('Arquivo inválido', 'Use arquivos <b>.xlsx</b> ou <b>.xls</b>.'); return; }
   $("#loadMsg").textContent = 'Lendo arquivo...';
 
   try{
@@ -446,7 +528,7 @@ async function handleLoad(inputFile){
     localStorage.setItem('last_base_info', JSON.stringify({name:file.name, rows:BASE_ROWS.length, when:Date.now()}));
     focusScan();
   }catch(e){
-    $("#loadMsg").innerHTML = `<span class="err">Falha ao ler o Excel: ${e.message}</span>`;
+    showInfo('Falha ao ler o Excel', e.message);
   }
 }
 
@@ -554,7 +636,7 @@ function addSelection({brs, at, rota}){ SELECTED.push({brs, at, rota}); renderSe
 function clearSelections(){ SELECTED = []; renderSelections(); }
 
 function exportSelections(){
-  if(!SELECTED.length){ alert('Nada para exportar.'); return; }
+  if(!SELECTED.length){ showInfo('Exportação', 'Nada para exportar.'); return; }
   const header = ['BR & Protocolo','AT & Protocolo','Rota'];
   const rows = SELECTED.map(it=>[it.brs||'', it.at||'', it.rota||'']);
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
@@ -583,34 +665,41 @@ async function gidToSheetTitle(spreadsheetId, gid){
   return sheet ? sheet.properties.title : null;
 }
 
-async function sendSelectionsToSheets(){
-  if(!SELECTED.length){ alert('Nenhuma realocação na tabela.'); return; }
+/* abre modal de envio */
+function openSheetsModal(){
+  $("#sheetUrl").value = '';
+  $("#sheetRange").value = 'Página1!A1';
+  openModal(sheetsModal);
+}
 
-  const link = prompt('Cole o link da planilha do Google Sheets (URL completa):');
-  if(!link) return;
+/* envia pro sheets usando os dados do modal */
+async function doSendToSheets(){
+  if(!SELECTED.length){ showInfo('Envio', 'Nenhuma realocação na tabela.'); return; }
+
+  const link = $("#sheetUrl").value.trim();
+  if(!link){ showInfo('URL inválida', 'Cole o link completo da planilha do Google.'); return; }
   const spreadsheetId = parseSpreadsheetId(link);
-  if(!spreadsheetId){ alert('Link inválido. Precisa ser de uma planilha do Google (docs.google.com/spreadsheets/...)'); return; }
+  if(!spreadsheetId){ showInfo('URL inválida', 'Precisa ser um link de <b>docs.google.com/spreadsheets</b>.'); return; }
 
   await ensureAuth();
 
-  let range = null;
-  try{
-    const gid = parseGid(link);
-    if(gid !== null){
-      const title = await gidToSheetTitle(spreadsheetId, gid);
-      if(title) range = `${title}!A1`;
-    }
-  }catch(e){ /* segue para perguntar o range */ }
-
+  let range = $("#sheetRange").value.trim();
   if(!range){
-    range = prompt('Informe a aba/range de destino (ex.: Página1!A1):', 'Página1!A1');
-    if(!range) return;
+    // tenta descobrir pelo gid do link
+    try{
+      const gid = parseGid(link);
+      if(gid !== null){
+        const title = await gidToSheetTitle(spreadsheetId, gid);
+        if(title) range = `${title}!A1`;
+      }
+    }catch(_){}
+    if(!range){ showInfo('Range obrigatório', 'Informe a aba/range, ex.: <b>Página1!A1</b>.'); return; }
   }
 
-  // prepara valores: cabeçalho + linhas
+  // === SOMENTE DUAS COLUNAS ===
   const values = [
-    ['BR & Protocolo','AT & Protocolo','Rota'],
-    ...SELECTED.map(it=>[it.brs||'', it.at||'', it.rota||''])
+    ['BR & Protocolo','AT & Protocolo'],
+    ...SELECTED.map(it=>[it.brs||'', it.at||''])
   ];
 
   const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
@@ -628,10 +717,11 @@ async function sendSelectionsToSheets(){
       const txt = await res.text();
       throw new Error(txt);
     }
-    alert('Enviado com sucesso para o Sheets!');
+    closeModal();
+    showInfo('Sucesso', 'Enviado com sucesso para o Sheets!');
   }catch(err){
     console.error(err);
-    alert('Falha ao enviar para o Sheets. Verifique permissões e se a API do Sheets está ativa.');
+    showInfo('Falha ao enviar', 'Verifique permissões e se a API do Sheets está ativa.<br><small>'+ (err?.message||err) +'</small>');
   }
 }
 
@@ -639,11 +729,11 @@ async function sendSelectionsToSheets(){
 function handleScan(){
   const input = $("#scan");
   const code = input.value.trim();
-  if(!code){ $("#scanMsg").innerHTML = '<span class="err">Digite/escaneie um BRS.</span>'; return; }
-  if(!INDEX_BRS.size){ $("#scanMsg").innerHTML = '<span class="err">Carregue a base primeiro.</span>'; return; }
+  if(!code){ showInfo('Busca', 'Digite/escaneie um <b>BRS</b>.'); return; }
+  if(!INDEX_BRS.size){ showInfo('Base vazia', 'Carregue a planilha primeiro.'); return; }
 
   const row = INDEX_BRS.get(normBRS(code));
-  if(!row){ $("#scanMsg").innerHTML = '<span class="err">Código não encontrado na base.</span>'; input.value=''; focusScan(); return; }
+  if(!row){ showInfo('Não encontrado', 'Código não localizado na base.'); input.value=''; focusScan(); return; }
 
   const same = findSameNeighborhoodGrouped(row.bairro);
   LAST_ROW = row; LAST_SAME = same;
@@ -691,8 +781,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   $("#btnExport").addEventListener("click", exportSelections);
   $("#btnClearSel").addEventListener("click", clearSelections);
-  $("#btnSendSheets").addEventListener("click", sendSelectionsToSheets);
-  // botão fica habilitado sempre; ensureAuth() cuida do login no clique
+
+  // Abre modal de envio
+  $("#btnSendSheets").addEventListener("click", openSheetsModal);
+  // Confirma envio a partir do modal
+  $("#btnDoSend").addEventListener("click", doSendToSheets);
 
   const last = JSON.parse(localStorage.getItem('last_base_info')||'null');
   if(last){
