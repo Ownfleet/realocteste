@@ -218,7 +218,6 @@
       <div class="logo"></div>
       <h1><b>SPR</b> • Realocamento de Pacotes</h1>
     </div>
-    <div class="muted" style="font-size:12.5px">LSP 12 Jardim Adriana</div>
   </div>
 </div>
 
@@ -370,7 +369,9 @@
     <header id="sheetsTitle">Enviar para Google Sheets</header>
     <div class="content">
       <div class="field">
-        <label for="sheetUrl"><b>URL da planilha</b> (docs.google.com/spreadsheets/...)</label>
+        <label for="sheetUrl">
+          <b>Insira aqui o link do Romaneio do dia feito pela roteirização</b>
+        </label>
         <input id="sheetUrl" placeholder="Cole aqui o link completo da planilha">
       </div>
 
@@ -402,7 +403,7 @@
     <header id="importTitle">Ler base do Google Sheets</header>
     <div class="content">
       <div class="field">
-        <label for="importUrl"><b>URL da planilha</b> (docs.google.com/spreadsheets/...)</label>
+        <label for="importUrl"><b>Insira aqui o link do Romaneio do dia feito pela roteirização</b></label>
         <input id="importUrl" placeholder="Cole aqui o link completo da planilha">
       </div>
 
@@ -459,7 +460,7 @@
 /* ====== OAuth (GIS) ====== */
 const CLIENT_ID = '800747129509-98obq6okp3t6prjr9u1j2m5od2ip857n.apps.googleusercontent.com';
 const SCOPES = 'openid email https://www.googleapis.com/auth/spreadsheets';
-const ENFORCE_SHOPEE = true; // false para não travar domínio
+const ENFORCE_SHOPEE = true; // true = restringe a domínios autorizados
 
 let accessToken = null;
 let tokenClient = null;
@@ -633,9 +634,15 @@ async function getUserEmail(token){
   const data = await r.json();
   return String(data.email||'').toLowerCase();
 }
+/* === ACEITA @shopee.com E @shopeemobile-external.com === */
 async function gatekeepShopee(token){
   const email = await getUserEmail(token);
-  if (!email.endsWith('@shopee.com')) throw new Error('Acesso permitido apenas para contas @shopee.com');
+  const ok =
+    /@shopee\.com$/i.test(email) ||
+    /@shopeemobile-external\.com$/i.test(email);
+  if (!ok) {
+    throw new Error('Acesso permitido apenas para contas @shopee.com ou @shopeemobile-external.com');
+  }
 }
 
 /* ========= Utilidades ========= */
@@ -1286,7 +1293,7 @@ const TUTORIAL_STEPS = [
   { t:'3) Rotas do mesmo bairro', h:`À direita listamos as <b>rotas com o mesmo Neighborhood</b>. Use os filtros por <b>Planned Vehicle Type</b>. Quando houver <b>poucos pacotes</b> em uma rota, aparece um aviso ⚠️.` },
   { t:'4) Adicionar e revisar', h:`Clique em <b>Adicionar nesta rota</b> para montar a realocação. A tabela <b>Realocações selecionadas</b> mantém os itens. Você pode <b>remover</b> ou <b>limpar</b>; os itens ficam salvos por usuário.` },
   { t:'5) Exportar ou Enviar para Sheets', h:`Use <b>Exportar (.xlsx)</b> ou <b>Enviar p/ Sheets</b>. Enviamos <b>somente BR e AT</b> (sem cabeçalho). O histórico de envios fica no final.` },
-  { t:'6) Permissões úteis', h:`Para ler/enviar, sua conta deve ter acesso à planilha (mínimo: leitura para ler, edição para enviar). O acesso pode ser restrito a <code>@shopee.com</code>.` }
+  { t:'6) Permissões úteis', h:`Para ler/enviar, sua conta deve ter acesso à planilha (mínimo: leitura para ler, edição para enviar). O acesso pode ser restrito a <code>@shopee.com</code> e <code>@shopeemobile-external.com</code>.` }
 ];
 let tutIndex = 0;
 function renderTut(){
