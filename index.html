@@ -119,6 +119,7 @@
     .modal input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(255,87,34,.12)}
     .modal footer{display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #eee;padding:12px}
     .hidden{display:none}
+    .warn-badge{color:#d7263d;font-weight:900}
   </style>
 </head>
 <body>
@@ -256,7 +257,7 @@
       <div class="row" style="margin-top:8px">
         <div class="field">
           <label for="sheetRange"><b>Aba/Range</b> (ex.: <code>Página1!A1</code>)</label>
-          <input id="sheetRange" placeholder="Página1!A1">
+          <input id="sheetRange" placeholder="Página1!A1" value="Página1!A1">
         </div>
       </div>
       <p class="muted" style="margin-top:10px">
@@ -279,6 +280,7 @@ const ENFORCE_SHOPEE = true; // false para não travar domínio
 
 let accessToken = null;
 let tokenClient = null;
+let currentEmail = null; // email do usuário logado
 
 // Inicializa o tokenClient quando o script do GIS terminar de carregar
 window.onload = () => {
@@ -292,10 +294,13 @@ window.onload = () => {
 
         try{
           if (ENFORCE_SHOPEE) await gatekeepShopee(accessToken);
+          currentEmail = await getUserEmail(accessToken);
+          loadHistoryForCurrentUser();
         }catch(e){
           showInfo('Acesso negado', e.message || e);
           google.accounts.oauth2.revoke(accessToken);
           accessToken = null;
+          currentEmail = null;
           return;
         }
       }
@@ -303,7 +308,7 @@ window.onload = () => {
   }
 };
 
-// ensureAuth robusta: cria tokenClient se faltar e abre popup quando necessário
+// ensureAuth robusta
 async function ensureAuth(){
   if (!tokenClient) {
     if (!window.google || !google.accounts || !google.accounts.oauth2) {
@@ -325,10 +330,13 @@ async function ensureAuth(){
       accessToken = resp.access_token;
       try {
         if (ENFORCE_SHOPEE) await gatekeepShopee(accessToken);
+        currentEmail = await getUserEmail(accessToken);
+        loadHistoryForCurrentUser();
         resolve(true);
       } catch (e) {
         google.accounts.oauth2.revoke(accessToken);
         accessToken = null;
+        currentEmail = null;
         reject(e);
       }
     };
@@ -413,6 +421,22 @@ let VEH_FILTER = new Set();
 let LAST_ROW = null;
 let LAST_SAME = [];
 let SELECTED = []; // {brs, at, rota}
+
+/* ========= Persistência por usuário ========= */
+const LS_PREFIX = 'spr_realloc_history_';
+function storageKey(){ return LS_PREFIX + (currentEmail || 'anon'); }
+function saveHistory(){
+  try{ localStorage.setItem(storageKey(), JSON.stringify(SELECTED)); }catch(_){}
+}
+function loadHistoryForCurrentUser(){
+  try{
+    const raw = localStorage.getItem(storageKey());
+    if(raw){
+      SELECTED = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+      renderSelections();
+    }
+  }catch(_){}
+}
 
 /* ========= Excel ========= */
 function parseSheetToObjects(ws){
@@ -578,11 +602,12 @@ function renderResult(row, same){
 
     const totalCage = INDEX_TOTAL_BY_CAGE.get(g.cage) || qtdNoBairro;
 
+    // Aviso quando poucos pacotes
     let statusHtml = '';
     if(qtdNoBairro <= 3 && !isFiorino){
-      statusHtml = `<span class="err">⚠️ ${qtdNoBairro}</span>`;
+      statusHtml = `<span class="warn-badge" title="Poucos pacotes neste bairro">⚠️ ${qtdNoBairro} <small>(poucos pacotes)</small></span>`;
     }else{
-      statusHtml = `<span class="ok">${qtdNoBairro}</span>`;
+      statusHtml = `<span class="ok" title="Quantidade no bairro">${qtdNoBairro}</span>`;
     }
 
     const tr = document.createElement("tr");
@@ -626,14 +651,23 @@ function renderSelections(){
     `;
     tr.querySelector('button').addEventListener('click', ()=>{
       SELECTED.splice(idx,1);
+      saveHistory();
       renderSelections();
     });
     tbody.appendChild(tr);
   });
   $("#selInfo").textContent = SELECTED.length ? `${SELECTED.length} item(ns)` : 'Sem itens.';
 }
-function addSelection({brs, at, rota}){ SELECTED.push({brs, at, rota}); renderSelections(); }
-function clearSelections(){ SELECTED = []; renderSelections(); }
+function addSelection({brs, at, rota}){
+  SELECTED.push({brs, at, rota});
+  saveHistory();
+  renderSelections();
+}
+function clearSelections(){
+  SELECTED = [];
+  try{ localStorage.removeItem(storageKey()); }catch(_){}
+  renderSelections();
+}
 
 function exportSelections(){
   if(!SELECTED.length){ showInfo('Exportação', 'Nada para exportar.'); return; }
@@ -672,7 +706,7 @@ function openSheetsModal(){
   openModal(sheetsModal);
 }
 
-/* envia pro sheets usando os dados do modal */
+/* envia pro sheets usando os dados do modal — somente 2 colunas */
 async function doSendToSheets(){
   if(!SELECTED.length){ showInfo('Envio', 'Nenhuma realocação na tabela.'); return; }
 
@@ -685,7 +719,6 @@ async function doSendToSheets(){
 
   let range = $("#sheetRange").value.trim();
   if(!range){
-    // tenta descobrir pelo gid do link
     try{
       const gid = parseGid(link);
       if(gid !== null){
@@ -696,13 +729,14 @@ async function doSendToSheets(){
     if(!range){ showInfo('Range obrigatório', 'Informe a aba/range, ex.: <b>Página1!A1</b>.'); return; }
   }
 
-  // === SOMENTE DUAS COLUNAS ===
   const values = [
     ['BR & Protocolo','AT & Protocolo'],
     ...SELECTED.map(it=>[it.brs||'', it.at||''])
   ];
 
-  const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+  const apiUrl =
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}` +
+    `/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
 
   try{
     const res = await fetch(apiUrl, {
@@ -787,10 +821,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Confirma envio a partir do modal
   $("#btnDoSend").addEventListener("click", doSendToSheets);
 
-  const last = JSON.parse(localStorage.getItem('last_base_info')||'null');
-  if(last){
-    const when = new Date(last.when||Date.now()).toLocaleString();
-    $("#baseInfo").textContent = `${last.rows} linhas carregadas (última: ${last.name} em ${when})`;
+  // Carrega histórico “anon” (rascunho) até o usuário logar
+  loadHistoryForCurrentUser();
+
+  const last = JSON.parse(localStorage.getItem('last_base_info') || 'null');
+  if (last) {
+    const when = new Date(last.when || Date.now()).toLocaleString();
+    $("#baseInfo").textContent =
+      `${last.rows} linhas carregadas (última: ${last.name} em ${when})`;
   }
 });
 </script>
