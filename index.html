@@ -12,6 +12,9 @@
   <!-- Google Identity Services (OAuth popup) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
+  <!-- Supabase JS (para Presence) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     :root{
       /* Paleta Shopee */
@@ -207,6 +210,9 @@
       padding:12px 16px;font-weight:900;box-shadow:0 10px 25px rgba(255,87,34,.35);cursor:pointer
     }
     .fab:hover{background:var(--primary-2)}
+
+    /* Badge de usuários online */
+    #onlineBadge{ font-weight:800; border:1px solid var(--line); background:#eef9f1; }
   </style>
 </head>
 <body>
@@ -218,6 +224,9 @@
       <div class="logo"></div>
       <h1><b>SPR</b> • Realocamento de Pacotes</h1>
     </div>
+
+    <!-- Badge "online agora" -->
+    <div id="onlineBadge" class="chip" title="Conectando…">0 online</div>
   </div>
 </div>
 
@@ -229,7 +238,7 @@
       <label class="file dropzone" id="dropzone" for="file">Arraste ou clique para selecionar</label>
       <input id="file" type="file" accept=".xlsx,.xls" style="display:none" />
       <button class="btn" id="btnLoad">Carregar planilha</button>
-      <button class="btn" id="btnLoadSheets" title="Ler dados do Google Sheets (CTs)">Ler do Sheets</button>
+      <button class="btn" id="btnLoadSheets" title="Ler dados do Google Sheets (CTs)">Ler Romaneio Sheets</button>
       <button class="btn secondary" id="btnReset" title="Limpa base e resultados">Limpar base</button>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn ghost small" id="btnHelp" title="Como usar">Ajuda</button>
@@ -1124,7 +1133,8 @@ async function loadFromGoogleSheet(url, tabTitle = DEFAULT_CTS_TITLE){
 
     try{
       localStorage.setItem(LS_LAST_BASE, JSON.stringify({
-        name: `Sheets:${spreadsheetId}/${tabTitle}`,
+        name: `Sheets:${spreads
+heetId}/${tabTitle}`,
         rows: BASE_ROWS.length,
         when: Date.now()
       }));
@@ -1290,7 +1300,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 const TUTORIAL_STEPS = [
   { t:'1) Carregar planilha', h:`Use <b>Arraste ou clique</b> e o botão <b>Carregar planilha</b>. Por padrão usamos a aba <b>Planilha1</b> (ou a primeira). Você também pode usar <b>Ler do Sheets</b> para puxar direto da aba <b>Calculation Tasks (CTs)</b>.` },
   { t:'2) Buscar um BRS', h:`No campo de busca, <b>bipe</b> ou digite o BRS e pressione Enter. À esquerda aparecem os <b>detalhes</b> (BRS, Rota, Bairro, Veículo, AT) e o <b>endereço</b>.` },
-  { t:'3) Rotas do mesmo bairro', h:`À direita listamos as <b>rotas com o mesmo Neighborhood</b>. Use os filtros por <b>Planned Vehicle Type</b>. Quando houver <b>poucos pacotes</b> em uma rota, aparece um aviso ⚠️.` },
+  { t:'3) Rotas com o mesmo bairro', h:`À direita listamos as <b>rotas com o mesmo Neighborhood</b>. Use os filtros por <b>Planned Vehicle Type</b>. Quando houver <b>poucos pacotes</b> em uma rota, aparece um aviso ⚠️.` },
   { t:'4) Adicionar e revisar', h:`Clique em <b>Adicionar nesta rota</b> para montar a realocação. A tabela <b>Realocações selecionadas</b> mantém os itens. Você pode <b>remover</b> ou <b>limpar</b>; os itens ficam salvos por usuário.` },
   { t:'5) Exportar ou Enviar para Sheets', h:`Use <b>Exportar (.xlsx)</b> ou <b>Enviar p/ Sheets</b>. Enviamos <b>somente BR e AT</b> (sem cabeçalho). O histórico de envios fica no final.` },
   { t:'6) Permissões úteis', h:`Para ler/enviar, sua conta deve ter acesso à planilha (mínimo: leitura para ler, edição para enviar). O acesso pode ser restrito a <code>@shopee.com</code> e <code>@shopeemobile-external.com</code>.` }
@@ -1312,6 +1322,78 @@ function finishTut(){ try{ localStorage.setItem(onboardingKey(),'1'); }catch(_){
 function maybeShowOnboarding(){
   try{ if(!localStorage.getItem(onboardingKey())) openAsk(); }catch(_){ openAsk(); }
 }
+
+/* ====== PRESENCE (Supabase) — Contador "online agora" ====== */
+/* 1) Troque pelas credenciais do seu projeto Supabase */
+const SUPABASE_URL  = "https://SEU-PROJETO.supabase.co";   // <— TROCAR
+const SUPABASE_ANON = "SUA_ANON_PUBLIC_KEY";               // <— TROCAR
+
+/* 2) Cria cliente Supabase */
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  realtime: { params: { eventsPerSecond: 5 } }
+});
+
+/* 3) Gera um ID estável por navegador (conta 1 por pessoa mesmo com várias abas) */
+const VISITOR_KEY_LS = 'spr_visitor_id';
+let visitorId = null;
+try{
+  visitorId = localStorage.getItem(VISITOR_KEY_LS);
+  if(!visitorId){
+    visitorId = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
+    localStorage.setItem(VISITOR_KEY_LS, visitorId);
+  }
+}catch(_){
+  visitorId = String(Math.random()).slice(2);
+}
+
+/* 4) ID único por aba (pro protocolo de presença) */
+const TAB_ID = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
+
+/* 5) Atualiza o badge */
+function setOnlineBadge(n, list){
+  const el = document.getElementById('onlineBadge');
+  if (!el) return;
+  el.textContent = `${n} online`;
+  el.title = (list && list.length) ? list.join(', ') : '—';
+}
+
+/* 6) Abre canal de presença */
+const presenceChannel = sb.channel('presence-spr', {
+  config: { presence: { key: TAB_ID } }
+});
+
+/* 7) Recalcula sempre que houver sync */
+presenceChannel.on('presence', { event: 'sync' }, () => {
+  const state = presenceChannel.presenceState(); // { tabKey: [metas...] }
+  const metas = Object.values(state).flat();
+  const uniqueVisitors = new Set();
+  const labels = [];
+  metas.forEach(m => {
+    if (m.visitor) {
+      uniqueVisitors.add(m.visitor);
+      if (m.label) labels.push(m.label);
+    }
+  });
+  setOnlineBadge(uniqueVisitors.size, Array.from(new Set(labels)));
+});
+
+/* 8) Conecta e publica a presença */
+presenceChannel.subscribe((status) => {
+  if (status === 'SUBSCRIBED') {
+    // Opcional: mude o label que aparece no tooltip do badge
+    const label = currentEmail || 'visitante';
+    presenceChannel.track({
+      visitor: visitorId,   // estável por navegador
+      label,                // aparece no title do badge (tooltip)
+      at: new Date().toISOString()
+    });
+  }
+});
+
+/* 9) Limpa ao fechar/atualizar */
+window.addEventListener('beforeunload', () => {
+  try { presenceChannel.untrack(); presenceChannel.unsubscribe(); } catch(_) {}
+});
 </script>
 </body>
 </html>
