@@ -12,9 +12,6 @@
   <!-- Google Identity Services (OAuth popup) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-  <!-- Supabase JS (para Presence) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <style>
     :root{
       /* Paleta Shopee */
@@ -78,6 +75,7 @@
     .btn.ghost{background:#fff;color:#333;border:2px solid #e8e8e8;box-shadow:none}
     .btn.cancel{background:#f3f4f6;color:#111827;box-shadow:none;border:1px solid var(--line)}
     .btn.full{width:100%}
+    .btn[disabled]{opacity:.55;cursor:not-allowed}
 
     .uploader{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .file{
@@ -210,9 +208,6 @@
       padding:12px 16px;font-weight:900;box-shadow:0 10px 25px rgba(255,87,34,.35);cursor:pointer
     }
     .fab:hover{background:var(--primary-2)}
-
-    /* Badge de usuários online */
-    #onlineBadge{ font-weight:800; border:1px solid var(--line); background:#eef9f1; }
   </style>
 </head>
 <body>
@@ -224,9 +219,6 @@
       <div class="logo"></div>
       <h1><b>SPR</b> • Realocamento de Pacotes</h1>
     </div>
-
-    <!-- Badge "online agora" -->
-    <div id="onlineBadge" class="chip" title="Conectando…">0 online</div>
   </div>
 </div>
 
@@ -370,6 +362,36 @@
     <div class="content" id="infoBody"></div>
     <footer>
       <button class="btn cancel" onclick="closeModal()">Fechar</button>
+    </footer>
+  </div>
+
+  <!-- NOT FOUND modal (novo) -->
+  <div id="nfModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="nfTitle">
+    <header id="nfTitle">Não encontrado</header>
+    <div class="content">
+      <p>Código não localizado na base.</p>
+      <p style="margin-top:8px"><b>Deseja pesquisar por bairro?</b></p>
+    </div>
+    <footer>
+      <button class="btn cancel" onclick="closeModal()">Fechar</button>
+      <button class="btn" id="btnOpenBairro">Pesquisar por bairro</button>
+    </footer>
+  </div>
+
+  <!-- BAIRRO modal (novo) -->
+  <div id="bairroModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="bairroTitle">
+    <header id="bairroTitle">Pesquisar por Bairro</header>
+    <div class="content">
+      <div class="field">
+        <label for="bairroInput"><b>Digite ou selecione o bairro</b></label>
+        <input id="bairroInput" list="dlBairros" placeholder="Ex.: Jardim das Flores" />
+        <datalist id="dlBairros"></datalist>
+      </div>
+      <p class="muted" style="margin-top:8px">A lista é montada a partir da base carregada.</p>
+    </div>
+    <footer>
+      <button class="btn cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn" id="btnBuscarBairro">Buscar</button>
     </footer>
   </div>
 
@@ -538,13 +560,15 @@ function playErrorSound(){
 const overlay = $("#overlay");
 const infoModal = $("#infoModal");
 const infoBody = $("#infoBody");
+const nfModal = $("#nfModal");
+const bairroModal = $("#bairroModal");
 const sheetsModal = $("#sheetsModal");
 const importModal = $("#importModal");
 const askModal = $("#askModal");
 const tutModal = $("#tutModal");
 function openModal(which){
   overlay.style.display = 'flex';
-  [infoModal, sheetsModal, importModal, askModal, tutModal].forEach(x=>x.classList.add('hidden'));
+  [infoModal, nfModal, bairroModal, sheetsModal, importModal, askModal, tutModal].forEach(x=>x.classList.add('hidden'));
   which.classList.remove('hidden');
 }
 function closeModal(){ overlay.style.display = 'none'; }
@@ -552,6 +576,14 @@ function showInfo(title, html){
   $("#infoTitle").textContent = title || 'Informação';
   infoBody.innerHTML = html || '';
   openModal(infoModal);
+}
+function openNotFound(){ openModal(nfModal); }
+function openBairro(){
+  // popula datalist
+  const dl = $("#dlBairros");
+  dl.innerHTML = ALL_BAIRROS.map(b=>`<option value="${b}">`).join('');
+  $("#bairroInput").value = '';
+  openModal(bairroModal);
 }
 
 /* ====== Persistência / Histórico ====== */
@@ -689,6 +721,7 @@ let BASE_ROWS = [];
 let INDEX_BRS = new Map();
 let INDEX_BAIRRO_CLUSTER = new Map();
 let INDEX_TOTAL_BY_CAGE = new Map();
+let ALL_BAIRROS = []; // << novo
 let VEH_TYPES = [];
 let VEH_FILTER = new Set();
 let LAST_ROW = null;
@@ -729,11 +762,13 @@ function normalizeFromExt(row){
 /* ========= Índices ========= */
 function buildIndexes(){
   INDEX_BRS.clear(); INDEX_BAIRRO_CLUSTER.clear(); INDEX_TOTAL_BY_CAGE.clear();
+  const setB = new Set();
   for(const r of BASE_ROWS){
     if(r.brs) INDEX_BRS.set(normBRS(r.brs), r);
 
     if(r.bairro){
       const key = stripAccents(String(r.bairro)).trim();
+      setB.add(key);
       if(!INDEX_BAIRRO_CLUSTER.has(key)) INDEX_BAIRRO_CLUSTER.set(key, new Map());
       const mapC = INDEX_BAIRRO_CLUSTER.get(key);
       const keyC = r.rota || '(sem rota)';
@@ -743,6 +778,7 @@ function buildIndexes(){
     const cage = r.rota || '(sem rota)';
     INDEX_TOTAL_BY_CAGE.set(cage, (INDEX_TOTAL_BY_CAGE.get(cage)||0) + 1);
   }
+  ALL_BAIRROS = Array.from(setB).sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
 }
 
 /* ========= Filtro de veículos ========= */
@@ -841,7 +877,7 @@ function findSameNeighborhoodGrouped(bairro){
 
 function renderResult(row, same){
   const sameFiltered = same
-    .filter(g => (g.cage||'') !== (row.rota||'')) 
+    .filter(g => !row.rota || (g.cage||'') !== (row.rota||'')) 
     .filter(g => !VEH_FILTER.size || VEH_FILTER.has((g.rows[0].veiculo||'').trim()));
 
   $("#resultLeft").style.display="block";
@@ -854,7 +890,7 @@ function renderResult(row, same){
   $("#kVeiculo").textContent = row.veiculo || '—';
   $("#kAT").textContent = row.at || '—';
 
-  $("#kEndereco").textContent = row.endereco || '—';
+  $("#kEndereco").textContent = row.endereco || (row.brs ? '—' : 'Pesquisa por bairro (sem endereço)');
 
   const tbody = $("#sameTable tbody"); tbody.innerHTML = "";
   sameFiltered.forEach(g=>{
@@ -873,15 +909,18 @@ function renderResult(row, same){
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><span class="chip">${g.cage}</span></td>
-      <td>${row.bairro}</td>
+      <td>${row.bairro || '—'}</td>
       <td>${veiculo}</td>
       <td>${totalCage}</td>
       <td>${statusHtml}</td>
-      <td><button class="btn small" data-cage="${g.cage}">Adicionar nesta rota</button></td>
+      <td><button class="btn small" data-cage="${g.cage}">${row.brs ? 'Adicionar nesta rota' : 'Ver rota'}</button></td>
     `;
     const btn = tr.querySelector('button');
     btn.addEventListener('click', ()=>{
-      if(!LAST_ROW) return;
+      if(!LAST_ROW || !LAST_ROW.brs){
+        showInfo('Dica', 'Para adicionar uma realocação, <b>bipe um BRS</b> primeiro. Aqui é apenas a consulta por bairro.');
+        return;
+      }
       const atTarget = pickRepresentativeAT(g.rows);
       const ok = addSelection({ brs: LAST_ROW.brs, at: atTarget, rota: g.cage });
       if(ok){
@@ -1133,8 +1172,7 @@ async function loadFromGoogleSheet(url, tabTitle = DEFAULT_CTS_TITLE){
 
     try{
       localStorage.setItem(LS_LAST_BASE, JSON.stringify({
-        name: `Sheets:${spreads
-heetId}/${tabTitle}`,
+        name: `Sheets:${spreadsheetId}/${tabTitle}`,
         rows: BASE_ROWS.length,
         when: Date.now()
       }));
@@ -1202,6 +1240,29 @@ async function doImportFromSheets(){
   await loadFromGoogleSheet(url, tab);
 }
 
+/* ========= Busca por bairro (novo) ========= */
+function openBairroFromNotFound(){ closeModal(); openBairro(); }
+
+function doSearchByBairro(){
+  const raw = $("#bairroInput").value.trim();
+  if(!raw){ showInfo('Bairro', 'Digite um bairro.'); return; }
+  if(!INDEX_BAIRRO_CLUSTER.size){ showInfo('Base', 'Carregue a base primeiro.'); return; }
+
+  // Normaliza igual ao índice
+  const key = stripAccents(raw).trim();
+  const same = findSameNeighborhoodGrouped(key);
+  if(!same.length){
+    showInfo('Sem resultados', `Não encontramos rotas para o bairro <b>${raw}</b>.`);
+    return;
+  }
+
+  // "Linha" sintética para exibir à esquerda
+  LAST_ROW = { brs:'', endereco:'', bairro: raw, at:'', veiculo:'', rota:'' };
+  LAST_SAME = same;
+  closeModal();
+  renderResult(LAST_ROW, LAST_SAME);
+}
+
 /* ========= Ações ========= */
 function handleScan(){
   const input = $("#scan");
@@ -1210,7 +1271,12 @@ function handleScan(){
   if(!INDEX_BRS.size){ showInfo('Base vazia', 'Carregue a planilha primeiro.'); return; }
 
   const row = INDEX_BRS.get(normBRS(code));
-  if(!row){ showInfo('Não encontrado', 'Código não localizado na base.'); input.value=''; focusScan(); return; }
+  if(!row){
+    input.value='';
+    // abre modal com opção de pesquisar por bairro
+    openNotFound();
+    return;
+  }
 
   const same = findSameNeighborhoodGrouped(row.bairro);
   LAST_ROW = row; LAST_SAME = same;
@@ -1221,7 +1287,7 @@ function handleScan(){
 }
 
 function resetBase(){
-  BASE_ROWS = []; INDEX_BRS.clear(); INDEX_BAIRRO_CLUSTER.clear(); INDEX_TOTAL_BY_CAGE.clear();
+  BASE_ROWS = []; INDEX_BRS.clear(); INDEX_BAIRRO_CLUSTER.clear(); INDEX_TOTAL_BY_CAGE.clear(); ALL_BAIRROS=[];
   LAST_ROW=null; LAST_SAME=[];
   $("#baseInfo").textContent = 'nenhuma carregada';
   $("#sheetInfo").textContent = '';
@@ -1276,6 +1342,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
   $("#importUrl").addEventListener("blur", listTabsFromUrlForImport);
   $("#btnDoImport").addEventListener("click", doImportFromSheets);
 
+  // Not found → bairro
+  $("#btnOpenBairro").addEventListener("click", openBairroFromNotFound);
+  $("#btnBuscarBairro").addEventListener("click", doSearchByBairro);
+  $("#bairroInput").addEventListener("keydown", e=>{ if(e.key==='Enter'){ e.preventDefault(); doSearchByBairro(); } });
+
   // Onboarding
   $("#btnHelp").addEventListener("click", openAsk);
   $("#fabHelp").addEventListener("click", openAsk);
@@ -1300,7 +1371,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 const TUTORIAL_STEPS = [
   { t:'1) Carregar planilha', h:`Use <b>Arraste ou clique</b> e o botão <b>Carregar planilha</b>. Por padrão usamos a aba <b>Planilha1</b> (ou a primeira). Você também pode usar <b>Ler do Sheets</b> para puxar direto da aba <b>Calculation Tasks (CTs)</b>.` },
   { t:'2) Buscar um BRS', h:`No campo de busca, <b>bipe</b> ou digite o BRS e pressione Enter. À esquerda aparecem os <b>detalhes</b> (BRS, Rota, Bairro, Veículo, AT) e o <b>endereço</b>.` },
-  { t:'3) Rotas com o mesmo bairro', h:`À direita listamos as <b>rotas com o mesmo Neighborhood</b>. Use os filtros por <b>Planned Vehicle Type</b>. Quando houver <b>poucos pacotes</b> em uma rota, aparece um aviso ⚠️.` },
+  { t:'3) Rotas do mesmo bairro', h:`À direita listamos as <b>rotas com o mesmo Neighborhood</b>. Use os filtros por <b>Planned Vehicle Type</b>. Quando houver <b>poucos pacotes</b> em uma rota, aparece um aviso ⚠️.` },
   { t:'4) Adicionar e revisar', h:`Clique em <b>Adicionar nesta rota</b> para montar a realocação. A tabela <b>Realocações selecionadas</b> mantém os itens. Você pode <b>remover</b> ou <b>limpar</b>; os itens ficam salvos por usuário.` },
   { t:'5) Exportar ou Enviar para Sheets', h:`Use <b>Exportar (.xlsx)</b> ou <b>Enviar p/ Sheets</b>. Enviamos <b>somente BR e AT</b> (sem cabeçalho). O histórico de envios fica no final.` },
   { t:'6) Permissões úteis', h:`Para ler/enviar, sua conta deve ter acesso à planilha (mínimo: leitura para ler, edição para enviar). O acesso pode ser restrito a <code>@shopee.com</code> e <code>@shopeemobile-external.com</code>.` }
@@ -1322,79 +1393,6 @@ function finishTut(){ try{ localStorage.setItem(onboardingKey(),'1'); }catch(_){
 function maybeShowOnboarding(){
   try{ if(!localStorage.getItem(onboardingKey())) openAsk(); }catch(_){ openAsk(); }
 }
-
-/* ====== PRESENCE (Supabase) — Contador "online agora" ====== */
-/* 1) Troque pelas credenciais do seu projeto Supabase */
-const SUPABASE_URL  = "https://rtuxwydhgucdqbmyuhbt.supabase.co";   // <— TROCAR
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0dXh3eWRoZ3VjZHFibXl1aGJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MTQyOTEsImV4cCI6MjA3NTM5MDI5MX0._69KQdPbipke-jVmF_UEO3VAYaiEqpa1h81jUVTN684";               // <— TROCAR
-
-/* 2) Cria cliente Supabase */
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-  realtime: { params: { eventsPerSecond: 5 } }
-});
-
-/* 3) Gera um ID estável por navegador (conta 1 por pessoa mesmo com várias abas) */
-const VISITOR_KEY_LS = 'spr_visitor_id';
-let visitorId = null;
-try{
-  visitorId = localStorage.getItem(VISITOR_KEY_LS);
-  if(!visitorId){
-    visitorId = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
-    localStorage.setItem(VISITOR_KEY_LS, visitorId);
-  }
-}catch(_){
-  visitorId = String(Math.random()).slice(2);
-}
-
-/* 4) ID único por aba (pro protocolo de presença) */
-const TAB_ID = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
-
-/* 5) Atualiza o badge */
-function setOnlineBadge(n, list){
-  const el = document.getElementById('onlineBadge');
-  if (!el) return;
-  el.textContent = `${n} online`;
-  el.title = (list && list.length) ? list.join(', ') : '—';
-}
-
-/* 6) Abre canal de presença */
-const presenceChannel = sb.channel('presence-spr', {
-  config: { presence: { key: TAB_ID } }
-});
-
-/* 7) Recalcula sempre que houver sync */
-presenceChannel.on('presence', { event: 'sync' }, () => {
-  const state = presenceChannel.presenceState(); // { tabKey: [metas...] }
-  const metas = Object.values(state).flat();
-  const uniqueVisitors = new Set();
-  const labels = [];
-  metas.forEach(m => {
-    if (m.visitor) {
-      uniqueVisitors.add(m.visitor);
-      if (m.label) labels.push(m.label);
-    }
-  });
-  setOnlineBadge(uniqueVisitors.size, Array.from(new Set(labels)));
-});
-
-/* 8) Conecta e publica a presença */
-presenceChannel.subscribe((status) => {
-  if (status === 'SUBSCRIBED') {
-    // Opcional: mude o label que aparece no tooltip do badge
-    const label = currentEmail || 'visitante';
-    presenceChannel.track({
-      visitor: visitorId,   // estável por navegador
-      label,                // aparece no title do badge (tooltip)
-      at: new Date().toISOString()
-    });
-  }
-});
-
-/* 9) Limpa ao fechar/atualizar */
-window.addEventListener('beforeunload', () => {
-  try { presenceChannel.untrack(); presenceChannel.unsubscribe(); } catch(_) {}
-});
 </script>
 </body>
 </html>
-
