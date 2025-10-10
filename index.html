@@ -13,164 +13,248 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
+    /* ===================== THEME ===================== */
     :root{
-      /* Paleta Shopee */
-      --primary:#ff5722; --primary-2:#e14d1f;
-      --bg:#f6f7fb; --card:#ffffff; --txt:#1e1f23; --muted:#6b7280;
-      --ok:#16a34a; --err:#dc2626; --chip:#fff0ea; --line:#e8eaf0;
-      --overlay: rgba(0,0,0,.52);
-      --shadow-sm: 0 6px 18px rgba(9,12,15,.06);
-      --shadow-md: 0 20px 36px rgba(9,12,15,.12);
-      --radius-2xl:18px; --radius-xl:16px; --radius-lg:14px; --radius:12px;
+      /* Cores principais */
+      --primary:#ff5a29;
+      --primary-2:#e94c1c;
+      --primary-3:#ff7a54;
+
+      --bg:#0b0e14;           /* fundo geral escuro */
+      --bg-2:#0f1420;         /* painéis */
+      --card:#101625;         /* cards */
+      --txt:#e7eaf1;          /* texto */
+      --muted:#9aa3b2;        /* texto secundário */
+      --line:#1c2436;         /* linhas/bordas */
+      --chip:#1a2234;         /* chips */
+      --ok:#18c37e;
+      --err:#ff4d4f;
+      --warn:#ffb020;
+
+      --overlay: rgba(3,6,14,.72);
+
+      /* Efeitos */
+      --shadow-sm: 0 10px 24px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.35) inset;
+      --shadow-md: 0 22px 60px rgba(0,0,0,.55);
+      --glow: 0 0 0px rgba(255,90,41,0), 0 0 0 rgba(255,90,41,0);
+      --glow-focus: 0 0 0 8px rgba(255,90,41,.1), 0 12px 40px rgba(255,90,41,.25);
+
+      /* Raios */
+      --radius-3xl:22px;
+      --radius-2xl:18px;
+      --radius-xl:16px;
+      --radius-lg:14px;
+      --radius:12px;
     }
 
+    /* ===================== RESET ===================== */
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100%}
     body{
-      background: radial-gradient(1200px 520px at 12% -10%, #ffe6df 0%, transparent 55%),
-                  radial-gradient(900px 380px at 90% -6%, #ffd9cc 0%, transparent 60%),
-                  var(--bg);
       color:var(--txt);
-      font:500 15px/1.42 Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+      font:500 15px/1.44 Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial;
       -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
       display:flex;flex-direction:column;min-height:100vh;
+      background:
+        radial-gradient(1200px 520px at 12% -10%, rgba(255,90,41,.25) 0%, transparent 55%),
+        radial-gradient(900px 380px at 90% -6%, rgba(255,122,84,.18) 0%, transparent 60%),
+        linear-gradient(180deg,#090c12 0%, #0d121c 100%);
     }
 
-    /* Cabeçalho compacto */
+    /* ===================== APPBAR ===================== */
     .appbar{
-      position:sticky;top:0;z-index:30;background:rgba(255,255,255,.8);
-      backdrop-filter:saturate(1.3) blur(8px);
+      position:sticky;top:0;z-index:30;
+      background:linear-gradient(180deg,rgba(10,15,24,.85),rgba(10,15,24,.72));
+      backdrop-filter:saturate(1.3) blur(10px);
       border-bottom:1px solid var(--line);
     }
-    .appbar-inner{max-width:1200px;margin:0 auto;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
-    .brand{display:flex;align-items:center;gap:10px}
-    .brand .logo{
-      width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#ff7b4d 0%,#ff5722 60%);
-      box-shadow:0 6px 16px rgba(255,87,34,.35)
+    .appbar-inner{
+      max-width:1200px;margin:0 auto;padding:12px 14px;
+      display:flex;gap:12px;align-items:center;justify-content:space-between
     }
-    .brand h1{font-size:16px;letter-spacing:.2px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand .logo{
+      width:34px;height:34px;border-radius:12px;
+      background:
+        conic-gradient(from 210deg, #ff7a54, #ff5a29 48%, #ff9a7b 60%, #ff7a54 100%);
+      box-shadow:0 8px 28px rgba(255,90,41,.38);
+      position:relative;overflow:hidden;
+    }
+    .brand .logo::after{
+      content:""; position:absolute; inset:1px; border-radius:11px;
+      background: radial-gradient(140% 100% at 20% 10%, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 42%) ,
+                  radial-gradient(120% 100% at 80% 90%, rgba(255,255,255,.12) 0%, rgba(255,255,255,0) 50%);
+      mix-blend-mode:overlay;
+    }
+    .brand h1{font-size:16.5px;letter-spacing:.2px;font-weight:800}
     .brand h1 b{color:var(--primary)}
 
+    /* ===================== LAYOUT WRAP ===================== */
     .wrap{max-width:1200px;margin:14px auto;padding:0 14px;flex:1}
 
+    /* ===================== CARD ===================== */
     .card{
-      background:var(--card);border-radius:var(--radius-xl);
+      background:linear-gradient(180deg, rgba(22,28,45,.85), rgba(16,22,37,.9));
+      border-radius:var(--radius-2xl);
       box-shadow:var(--shadow-sm);
-      padding:14px;transition:transform .12s,box-shadow .12s;
+      padding:14px;
       border:1px solid var(--line);
+      position:relative; overflow:hidden;
     }
-    .card:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(9,12,15,.10)}
+    .card::before{
+      content:""; position:absolute; inset:-1px;
+      border-radius:inherit; pointer-events:none;
+      background: radial-gradient(1200px 60px at 0% -10%, rgba(255,90,41,.12), transparent 60%);
+      opacity:.8;
+    }
+    .card:hover{transform:translateY(-1px)}
+    .card:hover::before{opacity:1}
 
+    /* ===================== BUTTON ===================== */
     .btn{
-      padding:10px 14px;border:0;border-radius:12px;background:var(--primary);
-      color:#fff;font-weight:800;letter-spacing:.2px;cursor:pointer;
-      transition:background .12s,transform .06s,box-shadow .12s;
-      box-shadow:0 3px 10px rgba(255,87,34,.22)
+      padding:10px 14px;border:0;border-radius:14px;
+      background:linear-gradient(180deg,var(--primary-3),var(--primary));
+      color:#fff;font-weight:900;letter-spacing:.2px;cursor:pointer;
+      transition:transform .06s, box-shadow .18s, filter .18s;
+      box-shadow:0 10px 28px rgba(255,90,41,.35);
+      position:relative; isolation:isolate;
     }
-    .btn:hover{background:var(--primary-2)} .btn:active{transform:scale(.985)}
-    .btn.small{padding:8px 12px;border-radius:10px;font-weight:800}
-    .btn.secondary{background:#111827;color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.18)}
-    .btn.secondary:hover{background:#000}
-    .btn.ghost{background:#fff;color:#333;border:2px solid #e8e8e8;box-shadow:none}
-    .btn.cancel{background:#f3f4f6;color:#111827;box-shadow:none;border:1px solid var(--line)}
+    .btn:hover{filter:saturate(1.05) brightness(1.02);}
+    .btn:active{transform:scale(.985)}
+    .btn.small{padding:8px 12px;border-radius:12px}
+    .btn.secondary{
+      background:linear-gradient(180deg,#1a2234,#121a2b);
+      color:#e7eaf1; box-shadow:0 8px 24px rgba(0,0,0,.5);
+    }
+    .btn.ghost{
+      background:transparent;color:#e7eaf1;border:1.5px solid #2a354f;
+      box-shadow:none;
+    }
+    .btn.cancel{
+      background:linear-gradient(180deg,#151c2d,#101625);
+      color:#c9d2e3;border:1.5px solid #27324a; box-shadow:none;
+    }
     .btn.full{width:100%}
 
+    /* ===================== INPUTS ===================== */
     .uploader{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .file{
-      display:inline-flex;align-items:center;justify-content:center;min-width:240px;height:42px;
-      padding:0 12px;border:2px dashed #ddd;border-radius:12px;background:#fff;color:#444;
-      cursor:pointer;transition:border-color .12s,box-shadow .12s,color .12s;font-weight:800
+      display:inline-flex;align-items:center;justify-content:center;min-width:260px;height:44px;
+      padding:0 12px;border:1.5px dashed #2a3349;border-radius:14px;background:linear-gradient(180deg,#0f1420,#0b111c);
+      color:#c8d0de; cursor:pointer; font-weight:900;
+      transition:border-color .12s, box-shadow .18s, color .12s, transform .06s;
     }
-    .file:hover{border-color:var(--primary);color:var(--primary)}
-    .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)}
-    .chip{background:var(--chip);padding:4px 10px;border-radius:999px;font-size:12px;display:inline-block}
-    .label-strong{font-weight:900;margin:2px 0 6px}
+    .file:hover{border-color:var(--primary); color:#fff; box-shadow:0 10px 30px rgba(255,90,41,.25)}
+    .muted{color:var(--muted)}
+    .ok{color:var(--ok)} .err{color:var(--err)}
+    .chip{
+      background:linear-gradient(180deg,#111a2a,#0c1422);
+      border:1px solid #253251;
+      padding:5px 10px;border-radius:999px;font-size:12px;display:inline-block;color:#cbd5e8
+    }
+    .label-strong{font-weight:900;margin:2px 0 6px;letter-spacing:.2px}
 
     .grid{display:grid;gap:12px}
     @media(min-width:980px){ .grid{grid-template-columns:1fr 1fr} }
 
     .scanbar{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}
     .scanbar input{
-      flex:1;min-width:220px;height:42px;padding:12px;border:2px solid #e8e8e8;border-radius:12px;font-size:16px;outline:none;background:#fff;
-      transition:border-color .12s,box-shadow .12s,transform .06s;
+      flex:1;min-width:220px;height:46px;padding:12px 14px;border:1.5px solid #2a3349;border-radius:14px;
+      font-size:16px;outline:none;background:linear-gradient(180deg,#0f1726,#0b111c); color:#e7eaf1;
+      transition:border-color .12s, box-shadow .2s, transform .06s;
+      box-shadow:var(--glow);
     }
-    .scanbar input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(255,87,34,.12)}
+    .scanbar input:focus{border-color:var(--primary); box-shadow:var(--glow-focus)}
     .scanbar input:active{transform:scale(.999)}
 
+    /* ===================== KPI ===================== */
     .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:8px;align-items:stretch}
-    .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;justify-content:space-between;min-height:74px}
-    .kpi .label{color:var(--muted);font-size:11px;letter-spacing:.35px;text-transform:uppercase;line-height:1;opacity:.95}
-    .kpi .value{margin-top:5px;font-size:18px;font-weight:900;line-height:1.1;white-space:normal;font-variant-numeric:tabular-nums}
-    .kpi .value.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px}
+    .kpi{
+      background:linear-gradient(180deg,#0d1320,#0a101a);
+      border:1px solid #212a3e;border-radius:16px;padding:10px;display:flex;flex-direction:column;justify-content:space-between;min-height:78px
+    }
+    .kpi .label{color:#8e9ab1;font-size:11px;letter-spacing:.35px;text-transform:uppercase;line-height:1;opacity:.95}
+    .kpi .value{margin-top:8px;font-size:18px;font-weight:900;line-height:1.1;white-space:normal;font-variant-numeric:tabular-nums}
+    .kpi .value.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3px;color:#f6f7fb}
 
-    .tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:13.5px}
-    th{color:var(--muted);font-weight:800;background:#fafafa;position:sticky;top:0}
-    tbody tr{transition:background .12s} tbody tr:hover td{background:#fff5f2}
+    /* ===================== TABLE ===================== */
+    .tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#0f1524,#0d1320)}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    th,td{padding:12px 10px;border-bottom:1px solid #1e273b;text-align:left;font-size:13.5px}
+    th{
+      color:#8fa2c5;font-weight:800;background:linear-gradient(180deg,#111a2c,#0f1524);
+      position:sticky;top:0;z-index:1
+    }
+    tbody tr{transition:background .12s}
+    tbody tr:hover td{background:rgba(255,90,41,.06)}
 
     .actions{display:flex;gap:10px;flex-wrap:wrap}
-    .danger{background:#fef2f2;border:1px solid #fde4e4}
+    .danger{background:linear-gradient(180deg,#2a0f14,#1b0a0d);border:1px solid #3a141a}
 
     footer{
       text-align:center;
-      padding:12px;
+      padding:14px;
       font-size:13px;
-      color:var(--muted);
+      color:#8591a6;
       border-top:1px solid var(--line);
       margin-top:14px;
     }
-    footer b{color:var(--primary)}
+    footer b{color:#f3f4f6}
 
-    /* ========== Modal base ========== */
+    /* ===================== MODALS ===================== */
     .modal-overlay{
       position:fixed;inset:0;background:var(--overlay);
-      display:none;align-items:center;justify-content:center;z-index:1000; /* bem acima de tudo */
+      display:none;align-items:center;justify-content:center;z-index:1000;
       padding:16px;
     }
     .modal{
-      background:var(--card);border-radius:var(--radius-2xl);max-width:760px;width:100%;
-      box-shadow:var(--shadow-md);overflow:hidden;border:1px solid var(--line);
-      animation:pop .15s ease-out;
+      background:linear-gradient(180deg,#0f1626,#0c1422);
+      border:1px solid #2a3349;border-radius:var(--radius-3xl);max-width:780px;width:100%;
+      box-shadow:var(--shadow-md);overflow:hidden;animation:pop .18s ease-out;
     }
-    @keyframes pop{from{transform:scale(.98);opacity:.8}to{transform:scale(1);opacity:1}}
-    .modal header{padding:14px 16px;border-bottom:1px solid #eee;font-weight:900;display:flex;align-items:center;gap:8px}
-    .modal .content{padding:14px 16px;line-height:1.45}
+    @keyframes pop{from{transform:translateY(12px) scale(.98);opacity:.8}to{transform:translateY(0) scale(1);opacity:1}}
+    .modal header{padding:16px;border-bottom:1px solid #22304a;font-weight:900;display:flex;align-items:center;gap:8px;letter-spacing:.2px}
+    .modal .content{padding:14px 16px;line-height:1.5}
     .modal .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .modal .field{display:flex;flex-direction:column;gap:6px;flex:1}
     .modal input,.modal select,.modal textarea{
-      height:42px;padding:10px;border:2px solid #eee;border-radius:12px;font-size:14px;outline:none;background:#fff;
+      height:46px;padding:10px 12px;border:1.5px solid #2a3349;border-radius:14px;font-size:14px;outline:none;
+      background:linear-gradient(180deg,#0f1726,#0b111c); color:#e7eaf1; transition:border-color .12s, box-shadow .2s;
+      box-shadow:var(--glow);
     }
     .modal textarea{min-height:80px;resize:vertical}
-    .modal input:focus,.modal select:focus,.modal textarea:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(255,87,34,.12)}
-    .modal footer{display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #eee;padding:12px}
+    .modal input:focus,.modal select:focus,.modal textarea:focus{border-color:var(--primary);box-shadow:var(--glow-focus)}
+    .modal footer{display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #22304a;padding:12px 16px}
     .hidden{display:none}
 
-    /* Neighborhood modal list */
-    .listbox{border:1px solid var(--line);border-radius:12px;max-height:360px;overflow:auto;background:#fff}
-    .list-head{position:sticky;top:0;background:#fafafa;border-bottom:1px solid var(--line);padding:8px 12px;font-weight:900;color:#444}
-    .list-item{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid #f3f4f6;cursor:pointer}
-    .list-item:hover{background:#fff5f2}
+    /* ===================== LISTA NEIGHBORHOOD ===================== */
+    .listbox{
+      border:1px solid #22304a;border-radius:16px;max-height:380px;overflow:auto;
+      background:linear-gradient(180deg,#0f1524,#0b111c)
+    }
+    .list-head{position:sticky;top:0;background:linear-gradient(180deg,#121a2c,#0f1626);border-bottom:1px solid #22304a;padding:10px 12px;font-weight:900;color:#ced6e8}
+    .list-item{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid #162036;cursor:pointer}
+    .list-item:hover{background:rgba(255,90,41,.07)}
     .chips{display:flex;flex-wrap:wrap;gap:6px}
-    .chip-x{display:inline-flex;gap:6px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:12px}
+    .chip-x{display:inline-flex;gap:6px;align-items:center;background:linear-gradient(180deg,#10192b,#0b121f);border:1px solid #253251;border-radius:999px;padding:6px 10px;font-size:12px}
     .chip-x button{all:unset;cursor:pointer;font-weight:900;opacity:.7}
     .chip-x button:hover{opacity:1}
 
-    /* ===== TOAST CENTRAL ===== */
+    /* ===================== TOAST ===================== */
     .toast-center{
       position:fixed;left:50%;top:50%;
       transform:translate(-50%,-50%) scale(.94);
       z-index:1100;display:flex;flex-direction:column;align-items:center;gap:6px;
-      background:#fff;border:1px solid var(--line);
-      padding:16px 18px;border-radius:16px;
-      box-shadow:0 12px 30px rgba(0,0,0,.14);
+      background:linear-gradient(180deg,#0e1526,#0a101a); border:1px solid #22304a;
+      padding:18px 20px;border-radius:18px;color:#e7eaf1;
+      box-shadow:0 30px 110px rgba(0,0,0,.65);
       animation:toast-pop .9s ease-in-out forwards;
     }
-    .toast-center .icon{ width:56px;height:56px;display:block;filter: drop-shadow(0 6px 14px rgba(0,0,0,.18)); }
+    .toast-center .icon{ width:56px;height:56px;display:block;filter: drop-shadow(0 10px 18px rgba(0,0,0,.45)); }
     .toast-center .title{ font-weight:900; letter-spacing:.2px; }
     .toast-success .title{ color:var(--ok); }
     .toast-error .title{ color:var(--err); }
-    .toast-center .subtitle{ font-size:12px; color:var(--muted); }
+    .toast-center .subtitle{ font-size:12px; color:#aab6cc; }
     @keyframes toast-pop{
       0%   { opacity:0; transform:translate(-50%,-50%) scale(.92) }
       15%  { opacity:1; transform:translate(-50%,-50%) scale(1.02) }
@@ -178,31 +262,23 @@
       100% { opacity:0; transform:translate(-50%,-54%) scale(.98) }
     }
 
-    /* ===== Overlay de carregamento ===== */
+    /* ===================== LOADING ===================== */
     .loading-overlay{
       position:fixed; inset:0; z-index:900;
-      background:rgba(255,255,255,.84); backdrop-filter:blur(2px);
+      background:rgba(6,10,18,.86); backdrop-filter:blur(2px);
       display:none; align-items:center; justify-content:center;
     }
     .loading-box{
-      background:#fff; border:1px solid var(--line); border-radius:16px;
+      background:linear-gradient(180deg,#0e1526,#0a101a); border:1px solid #22304a; border-radius:18px;
       padding:16px 18px; box-shadow:var(--shadow-md); display:flex; gap:12px; align-items:center;
-      font-weight:900;
+      font-weight:900; color:#dfe6f5
     }
     .spinner{
       width:22px; height:22px; border-radius:50%;
-      border:3px solid #eee; border-top-color: var(--primary);
+      border:3px solid #1f2840; border-top-color: var(--primary);
       animation:spin .9s linear infinite;
     }
     @keyframes spin{to{transform:rotate(360deg)}}
-
-    /* FAB Ajuda */
-    .fab{
-      position:fixed;right:18px;bottom:18px;z-index:40;
-      background:var(--primary);color:#fff;border:0;border-radius:999px;
-      padding:12px 16px;font-weight:900;box-shadow:0 10px 25px rgba(255,87,34,.35);cursor:pointer
-    }
-    .fab:hover{background:var(--primary-2)}
   </style>
 </head>
 <body>
@@ -228,7 +304,6 @@
       <button class="btn" id="btnLoadSheets" title="Ler dados do Google Sheets (CTs)">Ler Romaneio Sheets</button>
       <button class="btn secondary" id="btnReset" title="Limpa base e resultados">Limpar base</button>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <button class="btn ghost small" id="btnHelp" title="Como usar">Ajuda</button>
         <div id="loadMsg" class="muted">Aba padrão: <b>Planilha1</b></div>
       </div>
     </div>
@@ -246,7 +321,6 @@
         <input id="scan" placeholder="Bipe/insira o BRS... (Enter)" autocomplete="off" disabled />
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn" id="btnScan" disabled>Bipar</button>
-          <!-- Novo: abre modal de Neighborhood -->
           <button class="btn secondary" id="btnNeighModal" disabled>Pesquisar por Neighborhood</button>
         </div>
       </div>
@@ -268,7 +342,7 @@
       <div id="resultRight" style="display:none">
         <div>
           <div class="label-strong">Endereço (Destination Address)</div>
-          <div id="kEndereco" class="card" style="padding:10px;border:1px solid #eee"></div>
+          <div id="kEndereco" class="card" style="padding:10px;border:1px solid #1f2840;background:linear-gradient(180deg,#0e1526,#0a101a)"></div>
         </div>
 
         <div id="filterBar" style="margin-top:12px; display:none">
@@ -331,8 +405,8 @@
     </div>
 
     <!-- Log de envios -->
-    <div class="log" id="sendLog">
-      <h4>Histórico de envios</h4>
+    <div class="log" id="sendLog" style="margin-top:10px">
+      <h4 style="margin-bottom:6px">Histórico de envios</h4>
       <ul id="sendLogList"><li class="muted">Nenhum envio ainda.</li></ul>
     </div>
   </section>
@@ -381,7 +455,6 @@
 
       <div class="listbox" id="neighList" style="margin-top:8px">
         <div class="list-head">Bairros</div>
-        <!-- itens via JS -->
       </div>
 
       <div style="margin-top:8px">
@@ -470,36 +543,7 @@
       <button class="btn" id="btnDoImport">Carregar</button>
     </footer>
   </div>
-
-  <!-- ONBOARDING: pergunta -->
-  <div id="askModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="askTitle">
-    <header id="askTitle">Você já sabe usar o site?</header>
-    <div class="content">
-      <p>Se você já conhece o fluxo, pode ir direto. Se preferir, te mostro um passo-a-passo curto (menos de 1 minuto).</p>
-    </div>
-    <footer>
-      <button class="btn cancel" id="btnAskYes">Sim, já sei</button>
-      <button class="btn" id="btnAskNo">Não, quero o tutorial</button>
-    </footer>
-  </div>
-
-  <!-- ONBOARDING: tutorial -->
-  <div id="tutModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="tutTitle">
-    <header id="tutTitle">Como usar – passo a passo</header>
-    <div class="content">
-      <div id="tutBody"></div>
-      <div class="dots" id="tutDots"></div>
-    </div>
-    <footer>
-      <button class="btn cancel" id="btnTutPrev">Voltar</button>
-      <button class="btn secondary" id="btnTutDone" style="display:none">Concluir</button>
-      <button class="btn" id="btnTutNext">Próximo</button>
-    </footer>
-  </div>
 </div>
-
-<!-- FAB (atalho) -->
-<button class="fab" id="fabHelp" title="Tutorial">Ajuda</button>
 
 <script>
 /* ====== OAuth (GIS) ====== */
@@ -517,12 +561,10 @@ const LS_SENDLOG = 'spr_realloc_sendlog_';
 const LS_LAST_SHEET = 'spr_realloc_last_sheet_';
 const LS_VEH = 'veh_filter';
 const LS_LAST_BASE = 'last_base_info';
-const ONBOARD_KEY = 'spr_onboarding_done_';
 
 function storageKey(){ return LS_PREFIX + (currentEmail || 'anon'); }
 function sendLogKey(){ return LS_SENDLOG + (currentEmail || 'anon'); }
 function lastSheetKey(){ return LS_LAST_SHEET + (currentEmail || 'anon'); }
-function onboardingKey(){ return ONBOARD_KEY + (currentEmail || 'anon'); }
 
 /* ====== Utils/UI ====== */
 const $ = s => document.querySelector(s);
@@ -535,8 +577,8 @@ function showToastCenter({ok=true, title, subtitle}){
   box.className = `toast-center ${ok?'toast-success':'toast-error'}`;
   const img = document.createElement('img');
   const svg = ok
-    ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#16a34a"/><path d="M18 34l9 9 19-20" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>`
-    : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#dc2626"/><path d="M22 22l20 20M42 22L22 42" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>`;
+    ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#18c37e"/><path d="M18 34l9 9 19-20" fill="none" stroke="#0b0e14" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+    : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#ff4d4f"/><path d="M22 22l20 20M42 22L22 42" fill="none" stroke="#0b0e14" stroke-width="6" stroke-linecap="round"/></svg>`;
   img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
   img.className = 'icon';
   img.alt = ok ? 'Sucesso' : 'Erro';
@@ -566,19 +608,17 @@ function playErrorSound(){
   }catch(_){}
 }
 
-/* ====== Modal helpers ====== */
+/* ====== Modals ====== */
 const overlay = $("#overlay");
 const infoModal = $("#infoModal");
 const sheetsModal = $("#sheetsModal");
 const importModal = $("#importModal");
-const askModal = $("#askModal");
-const tutModal = $("#tutModal");
 const neighModal = $("#neighModal");
 const brModal = $("#brModal");
 
 function openModal(which){
   overlay.style.display = 'flex';
-  [infoModal, sheetsModal, importModal, askModal, tutModal, neighModal, brModal].forEach(x=>x.classList.add('hidden'));
+  [infoModal, sheetsModal, importModal, neighModal, brModal].forEach(x=>x.classList.add('hidden'));
   which.classList.remove('hidden');
 }
 function closeModal(){ overlay.style.display = 'none'; }
@@ -597,7 +637,6 @@ function loadHistoryForCurrentUser(){
     if(raw){ SELECTED = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : []; renderSelections(); }
   }catch(_){}
   renderSendLog();
-  maybeShowOnboarding();
 }
 function appendSendLog(entry){
   try{
@@ -782,7 +821,6 @@ function buildIndexes(){
     INDEX_TOTAL_BY_CAGE.set(cage, (INDEX_TOTAL_BY_CAGE.get(cage)||0) + 1);
   }
 
-  // Habilita botões atrelados à base
   const enable = INDEX_BAIRRO_CLUSTER.size > 0;
   $("#btnNeighModal").disabled = !enable;
 }
@@ -809,8 +847,7 @@ function renderFilterUI(){
     label.querySelector('input').addEventListener('change', e=>{
       if(e.target.checked) VEH_FILTER.add(t); else VEH_FILTER.delete(t);
       localStorage.setItem(LS_VEH, JSON.stringify(Array.from(VEH_FILTER)));
-      rerenderSame(); // BR mode
-      // Neighborhood mode usa botão Aplicar (renderiza depois)
+      rerenderSame();
     });
   });
   bar.style.display = VEH_TYPES.length ? 'block' : 'none';
@@ -899,9 +936,9 @@ function fillSameTable(groups, bairroLabel, neighMode){
 
     let statusHtml = '';
     if(qtdNoBairro <= 3 && !isFiorino){
-      statusHtml = `<span class="warn-badge" title="Poucos pacotes neste bairro">⚠️ ${qtdNoBairro} <small>(poucos)</small></span>`;
+      statusHtml = `<span class="chip" style="color:${'var(--warn)'}">⚠ ${qtdNoBairro} (poucos)</span>`;
     }else{
-      statusHtml = `<span class="ok" title="Quantidade no bairro">${qtdNoBairro}</span>`;
+      statusHtml = `<span class="ok">${qtdNoBairro}</span>`;
     }
 
     const tr = document.createElement("tr");
@@ -956,7 +993,7 @@ function renderResult(row, same){
 
   $("#kEndereco").textContent = row.endereco || '—';
 
-  fillSameTable(sameFiltered, row.bairro, /*neighMode=*/false);
+  fillSameTable(sameFiltered, row.bairro, false);
 }
 
 function rerenderSame(){
@@ -1239,7 +1276,7 @@ function renderNeighList(){
     row.className = 'list-item';
     row.innerHTML = `<input type="checkbox" id="${id}" ${checked}><label for="${id}" style="flex:1;cursor:pointer">${k}</label>`;
     row.querySelector('input').addEventListener('change', e=>{
-      if(e.target.checked) NEIGH_SELECTED.add(k); else NEIGH_SELECTED.delete(k);
+      if(e.target.checked) NEIGH_SELECTED.add(k); else NEIGH_SELECTED.remove(k);
       renderNeighChips();
     });
     list.appendChild(row);
@@ -1266,8 +1303,7 @@ function openNeigh(){
   openModal(neighModal);
 }
 function applyNeighSelection(){
-  // Combina grupos respeitando filtro de veículo
-  const cages = new Map(); // cage -> {cage, rows, bairro}
+  const cages = new Map();
   Array.from(NEIGH_SELECTED).forEach(k=>{
     const mapC = INDEX_BAIRRO_CLUSTER.get(k);
     if(!mapC) return;
@@ -1294,28 +1330,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
   $("#btnExport").addEventListener("click", exportSelections);
   $("#btnClearSel").addEventListener("click", clearSelections);
 
-  // ENVIAR → modal e ações
+  // Enviar → Sheets
   $("#btnSendSheets").addEventListener("click", openSheetsModal);
   $("#sheetUrl").addEventListener("change", listTabsFromUrl);
   $("#sheetUrl").addEventListener("blur", listTabsFromUrl);
   $("#btnDoSend").addEventListener("click", doSendToSheets);
 
-  // IMPORTAR (LER DO SHEETS)
+  // Importar (ler do Sheets)
   $("#btnLoadSheets").addEventListener("click", openImportModal);
   $("#importUrl").addEventListener("change", listTabsFromUrlForImport);
   $("#importUrl").addEventListener("blur", listTabsFromUrlForImport);
   $("#btnDoImport").addEventListener("click", doImportFromSheets);
 
-  // Onboarding
-  $("#btnHelp").addEventListener("click", ()=>openModal(askModal));
-  $("#fabHelp").addEventListener("click", ()=>openModal(askModal));
-  $("#btnAskYes").addEventListener("click", ()=>{ try{localStorage.setItem(onboardingKey(),'1');}catch(_){ } closeModal(); });
-  $("#btnAskNo").addEventListener("click", ()=>{ tutIndex=0; renderTut(); openModal(tutModal); });
-  $("#btnTutPrev").addEventListener("click", ()=>{ if(tutIndex>0){ tutIndex--; renderTut(); } });
-  $("#btnTutNext").addEventListener("click", ()=>{ if(tutIndex<TUTORIAL_STEPS.length-1){ tutIndex++; renderTut(); } });
-  $("#btnTutDone").addEventListener("click", ()=>{ try{ localStorage.setItem(onboardingKey(),'1'); }catch(_){ } closeModal(); });
-
-  // Rascunho local até logar
+  // Restaura histórico local
   loadHistoryForCurrentUser();
 
   // Info última base (cosmético)
@@ -1354,30 +1381,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     closeModal();
   });
 });
-
-/* ===== Tutorial ===== */
-const TUTORIAL_STEPS = [
-  { t:'1) Carregar planilha', h:`Use <b>Arraste ou clique</b> e o botão <b>Carregar planilha</b>. Por padrão usamos a aba <b>Planilha1</b> (ou a primeira). Você também pode usar <b>Ler do Sheets</b> para puxar direto da aba <b>Calculation Tasks (CTs)</b>.` },
-  { t:'2) Buscar um BRS', h:`No campo de busca, <b>bipe</b> ou digite o BRS e pressione Enter. À esquerda aparecem os <b>detalhes</b> (BRS, Rota, Bairro, Veículo, AT) e o <b>endereço</b>.` },
-  { t:'3) Rotas do mesmo bairro', h:`À direita listamos as <b>rotas com o mesmo Neighborhood</b>. Use os filtros por <b>Planned Vehicle Type</b>.` },
-  { t:'4) Adicionar e revisar', h:`No modo <b>Neighborhood</b>, selecione os bairros no <b>modal</b>, aplique e então clique em <b>Adicionar nesta rota</b>. Será aberto um <b>modal para BR</b> — ele pode <b>não estar na base</b> e será aceito.` },
-  { t:'5) Exportar ou Enviar para Sheets', h:`Use <b>Exportar (.xlsx)</b> ou <b>Enviar p/ Sheets</b>. Enviamos <b>somente BR e AT</b> (sem cabeçalho). O histórico de envios fica no final.` },
-  { t:'6) Permissões úteis', h:`Para ler/enviar, sua conta deve ter acesso à planilha. O acesso pode ser restrito a <code>@shopee.com</code> e <code>@shopeemobile-external.com</code>.` }
-];
-let tutIndex = 0;
-function renderTut(){
-  const body = $("#tutBody");
-  const dots = $("#tutDots");
-  const step = TUTORIAL_STEPS[tutIndex];
-  body.innerHTML = `<h3 style="margin-bottom:6px">${step.t}</h3><p>${step.h}</p>`;
-  dots.innerHTML = TUTORIAL_STEPS.map((_,i)=>`<span class="dot ${i===tutIndex?'active':''}"></span>`).join('');
-  $("#btnTutPrev").style.visibility = tutIndex===0?'hidden':'visible';
-  $("#btnTutNext").style.display = tutIndex===TUTORIAL_STEPS.length-1?'none':'inline-block';
-  $("#btnTutDone").style.display = tutIndex===TUTORIAL_STEPS.length-1?'inline-block':'none';
-}
-function maybeShowOnboarding(){
-  try{ if(!localStorage.getItem(onboardingKey())) openModal(askModal); }catch(_){ openModal(askModal); }
-}
 
 /* ========= Drag & Drop ========= */
 (function setupDnd(){
