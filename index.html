@@ -75,7 +75,6 @@
     .btn.ghost{background:#fff;color:#333;border:2px solid #e8e8e8;box-shadow:none}
     .btn.cancel{background:#f3f4f6;color:#111827;box-shadow:none;border:1px solid var(--line)}
     .btn.full{width:100%}
-    .btn[disabled]{opacity:.55;cursor:not-allowed}
 
     .uploader{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .file{
@@ -98,6 +97,30 @@
     }
     .scanbar input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(255,87,34,.12)}
     .scanbar input:active{transform:scale(.999)}
+
+    /* ====== Neighborhood Search ====== */
+    .neighbar{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;align-items:flex-start}
+    .neighbar .col{display:flex;flex-direction:column;gap:6px;flex:1;min-width:260px}
+    .neighbar input{
+      height:42px;padding:12px;border:2px solid #e8e8e8;border-radius:12px;font-size:16px;outline:none;background:#fff;
+      transition:border-color .12s,box-shadow .12s,transform .06s;
+    }
+    .neighbar input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(255,87,34,.12)}
+    .suggest{
+      position:relative;
+    }
+    .suggest-list{
+      position:absolute;left:0;right:0;top:46px;z-index:25;background:#fff;border:1px solid var(--line);border-radius:12px;
+      box-shadow:var(--shadow-sm);max-height:260px;overflow:auto;
+    }
+    .suggest-item{padding:10px 12px;cursor:pointer}
+    .suggest-item:hover{background:#fff5f2}
+    .chips{display:flex;flex-wrap:wrap;gap:6px}
+    .chip-x{
+      display:inline-flex;gap:6px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:12px
+    }
+    .chip-x button{all:unset;cursor:pointer;font-weight:900;opacity:.7}
+    .chip-x button:hover{opacity:1}
 
     .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:8px;align-items:stretch}
     .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;justify-content:space-between;min-height:74px}
@@ -247,11 +270,32 @@
         <div class="muted" id="sheetInfo"></div>
       </div>
 
+      <!-- Busca por BR (já existente) -->
       <div class="scanbar">
         <input id="scan" placeholder="Bipe/insira o BRS... (Enter)" autocomplete="off" disabled />
         <button class="btn" id="btnScan" disabled>Bipar</button>
       </div>
       <div id="scanMsg" class="muted" style="margin-top:6px">Carregue a planilha para habilitar a busca.</div>
+
+      <!-- NOVO: Busca por Neighborhood (multi-seleção) -->
+      <div class="neighbar">
+        <div class="col">
+          <label class="label-strong">Pesquisar por <span class="chip">Neighborhood</span></label>
+          <div class="suggest">
+            <input id="neighSearch" placeholder="Digite o bairro e selecione (pode selecionar vários)" autocomplete="off" disabled>
+            <div id="neighSuggest" class="suggest-list hidden"></div>
+          </div>
+          <div id="neighChips" class="chips"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:180px">
+          <label class="label-strong" style="visibility:hidden">ações</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn small" id="btnListByNeigh" disabled>Listar rotas</button>
+            <button class="btn small ghost" id="btnClearNeigh" disabled>Limpar bairros</button>
+          </div>
+          <div class="muted" id="neighMsg"></div>
+        </div>
+      </div>
 
       <div id="resultLeft" style="margin-top:10px; display:none">
         <div class="kpis">
@@ -302,7 +346,7 @@
         </div>
       </div>
 
-      <div id="placeholderRight" class="muted">Bipe um BRS para ver endereço, filtrar e listar as rotas do mesmo bairro.</div>
+      <div id="placeholderRight" class="muted">Bipe um BRS ou pesquise por Neighborhood para listar as rotas.</div>
     </aside>
   </div>
 
@@ -362,36 +406,6 @@
     <div class="content" id="infoBody"></div>
     <footer>
       <button class="btn cancel" onclick="closeModal()">Fechar</button>
-    </footer>
-  </div>
-
-  <!-- NOT FOUND modal (novo) -->
-  <div id="nfModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="nfTitle">
-    <header id="nfTitle">Não encontrado</header>
-    <div class="content">
-      <p>Código não localizado na base.</p>
-      <p style="margin-top:8px"><b>Deseja pesquisar por bairro?</b></p>
-    </div>
-    <footer>
-      <button class="btn cancel" onclick="closeModal()">Fechar</button>
-      <button class="btn" id="btnOpenBairro">Pesquisar por bairro</button>
-    </footer>
-  </div>
-
-  <!-- BAIRRO modal (novo) -->
-  <div id="bairroModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="bairroTitle">
-    <header id="bairroTitle">Pesquisar por Bairro</header>
-    <div class="content">
-      <div class="field">
-        <label for="bairroInput"><b>Digite ou selecione o bairro</b></label>
-        <input id="bairroInput" list="dlBairros" placeholder="Ex.: Jardim das Flores" />
-        <datalist id="dlBairros"></datalist>
-      </div>
-      <p class="muted" style="margin-top:8px">A lista é montada a partir da base carregada.</p>
-    </div>
-    <footer>
-      <button class="btn cancel" onclick="closeModal()">Cancelar</button>
-      <button class="btn" id="btnBuscarBairro">Buscar</button>
     </footer>
   </div>
 
@@ -560,15 +574,13 @@ function playErrorSound(){
 const overlay = $("#overlay");
 const infoModal = $("#infoModal");
 const infoBody = $("#infoBody");
-const nfModal = $("#nfModal");
-const bairroModal = $("#bairroModal");
 const sheetsModal = $("#sheetsModal");
 const importModal = $("#importModal");
 const askModal = $("#askModal");
 const tutModal = $("#tutModal");
 function openModal(which){
   overlay.style.display = 'flex';
-  [infoModal, nfModal, bairroModal, sheetsModal, importModal, askModal, tutModal].forEach(x=>x.classList.add('hidden'));
+  [infoModal, sheetsModal, importModal, askModal, tutModal].forEach(x=>x.classList.add('hidden'));
   which.classList.remove('hidden');
 }
 function closeModal(){ overlay.style.display = 'none'; }
@@ -576,14 +588,6 @@ function showInfo(title, html){
   $("#infoTitle").textContent = title || 'Informação';
   infoBody.innerHTML = html || '';
   openModal(infoModal);
-}
-function openNotFound(){ openModal(nfModal); }
-function openBairro(){
-  // popula datalist
-  const dl = $("#dlBairros");
-  dl.innerHTML = ALL_BAIRROS.map(b=>`<option value="${b}">`).join('');
-  $("#bairroInput").value = '';
-  openModal(bairroModal);
 }
 
 /* ====== Persistência / Histórico ====== */
@@ -692,6 +696,8 @@ const norm = (s='') => stripAccents(String(s).trim()).toLowerCase();
 const normBRS = (s='') => String(s).toUpperCase().replace(/[^A-Z0-9]/g,'');
 const isExcel = f => /\.(xlsx|xls)$/i.test(f?.name||'');
 
+function debounce(fn, ms=160){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); }; }
+
 /* ========= Mapeamento/normalização ========= */
 const COLS_EXT = {
   brs:        ['SPX TN','BRS','Codigo','Código','Code','Tracking','AWB'],
@@ -719,14 +725,17 @@ function pick(row, names){
 /* ========= Estado ========= */
 let BASE_ROWS = [];
 let INDEX_BRS = new Map();
-let INDEX_BAIRRO_CLUSTER = new Map();
+let INDEX_BAIRRO_CLUSTER = new Map(); // key(bairro sem acento) -> Map(cage -> rows[])
 let INDEX_TOTAL_BY_CAGE = new Map();
-let ALL_BAIRROS = []; // << novo
 let VEH_TYPES = [];
 let VEH_FILTER = new Set();
 let LAST_ROW = null;
 let LAST_SAME = [];
 let SELECTED = []; // {brs, at, rota}
+
+/* Neighborhood search state */
+let NEIGH_SELECTED = new Set(); // keys normalizados
+let NEIGH_LAST_RESULTS = [];    // grupos combinados
 
 /* ========= Excel ========= */
 function parseSheetToObjects(ws){
@@ -762,13 +771,11 @@ function normalizeFromExt(row){
 /* ========= Índices ========= */
 function buildIndexes(){
   INDEX_BRS.clear(); INDEX_BAIRRO_CLUSTER.clear(); INDEX_TOTAL_BY_CAGE.clear();
-  const setB = new Set();
   for(const r of BASE_ROWS){
     if(r.brs) INDEX_BRS.set(normBRS(r.brs), r);
 
     if(r.bairro){
       const key = stripAccents(String(r.bairro)).trim();
-      setB.add(key);
       if(!INDEX_BAIRRO_CLUSTER.has(key)) INDEX_BAIRRO_CLUSTER.set(key, new Map());
       const mapC = INDEX_BAIRRO_CLUSTER.get(key);
       const keyC = r.rota || '(sem rota)';
@@ -778,7 +785,12 @@ function buildIndexes(){
     const cage = r.rota || '(sem rota)';
     INDEX_TOTAL_BY_CAGE.set(cage, (INDEX_TOTAL_BY_CAGE.get(cage)||0) + 1);
   }
-  ALL_BAIRROS = Array.from(setB).sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
+
+  // Ativar controles de Neighborhood
+  const neighEnabled = INDEX_BAIRRO_CLUSTER.size > 0;
+  $("#neighSearch").disabled = !neighEnabled;
+  $("#btnListByNeigh").disabled = !neighEnabled;
+  $("#btnClearNeigh").disabled = !neighEnabled;
 }
 
 /* ========= Filtro de veículos ========= */
@@ -804,6 +816,7 @@ function renderFilterUI(){
       if(e.target.checked) VEH_FILTER.add(t); else VEH_FILTER.delete(t);
       localStorage.setItem(LS_VEH, JSON.stringify(Array.from(VEH_FILTER)));
       rerenderSame();
+      renderByNeighborhood(); // também atualiza modo Neighborhood
     });
   });
   bar.style.display = VEH_TYPES.length ? 'block' : 'none';
@@ -814,6 +827,7 @@ function renderFilterUI(){
     localStorage.setItem(LS_VEH, JSON.stringify(Array.from(VEH_FILTER)));
     wrap.querySelectorAll('input[type="checkbox"]').forEach(ch=> ch.checked = VEH_FILTER.has(ch.value));
     rerenderSame();
+    renderByNeighborhood();
   }
 }
 
@@ -872,12 +886,12 @@ function findSameNeighborhoodGrouped(bairro){
   const key = stripAccents(String(bairro||'').trim());
   const mapC = INDEX_BAIRRO_CLUSTER.get(key);
   if(!mapC) return [];
-  return Array.from(mapC.entries()).map(([cage,rows])=>({cage,rows}));
+  return Array.from(mapC.entries()).map(([cage,rows])=>({cage,rows,bairro}));
 }
 
 function renderResult(row, same){
   const sameFiltered = same
-    .filter(g => !row.rota || (g.cage||'') !== (row.rota||'')) 
+    .filter(g => (g.cage||'') !== (row.rota||'')) 
     .filter(g => !VEH_FILTER.size || VEH_FILTER.has((g.rows[0].veiculo||'').trim()));
 
   $("#resultLeft").style.display="block";
@@ -890,14 +904,30 @@ function renderResult(row, same){
   $("#kVeiculo").textContent = row.veiculo || '—';
   $("#kAT").textContent = row.at || '—';
 
-  $("#kEndereco").textContent = row.endereco || (row.brs ? '—' : 'Pesquisa por bairro (sem endereço)');
+  $("#kEndereco").textContent = row.endereco || '—';
 
+  fillSameTable(sameFiltered, row.bairro, /*neighMode=*/false);
+}
+
+function rerenderSame(){
+  if(!LAST_ROW) return;
+  renderResult(LAST_ROW, LAST_SAME);
+}
+
+/* ========= Tabela de rotas (compartilhada) ========= */
+function fillSameTable(groups, bairroLabel, neighMode){
   const tbody = $("#sameTable tbody"); tbody.innerHTML = "";
-  sameFiltered.forEach(g=>{
+  const labelInfo = neighMode
+    ? (groups.length ? `Encontradas ${groups.length} rotas nas seleção(ões) de Neighborhood.` : "Nenhuma rota para os bairros selecionados.")
+    : (groups.length ? `Encontradas ${groups.length} rotas com o mesmo Neighborhood.` : "Nenhuma outra rota com o mesmo Neighborhood.");
+  $("#sameInfo").textContent = labelInfo;
+
+  groups.forEach(g=>{
     const qtdNoBairro = g.rows.length;
     const veiculo = g.rows[0].veiculo || '—';
     const isFiorino = /fiorino/i.test(veiculo);
     const totalCage = INDEX_TOTAL_BY_CAGE.get(g.cage) || qtdNoBairro;
+    const bairroShown = g.bairro || bairroLabel || '—';
 
     let statusHtml = '';
     if(qtdNoBairro <= 3 && !isFiorino){
@@ -909,40 +939,50 @@ function renderResult(row, same){
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><span class="chip">${g.cage}</span></td>
-      <td>${row.bairro || '—'}</td>
+      <td>${bairroShown}</td>
       <td>${veiculo}</td>
       <td>${totalCage}</td>
       <td>${statusHtml}</td>
-      <td><button class="btn small" data-cage="${g.cage}">${row.brs ? 'Adicionar nesta rota' : 'Ver rota'}</button></td>
+      <td><button class="btn small" data-cage="${g.cage}" data-bairro="${bairroShown}">Adicionar nesta rota</button></td>
     `;
     const btn = tr.querySelector('button');
     btn.addEventListener('click', ()=>{
-      if(!LAST_ROW || !LAST_ROW.brs){
-        showInfo('Dica', 'Para adicionar uma realocação, <b>bipe um BRS</b> primeiro. Aqui é apenas a consulta por bairro.');
-        return;
-      }
-      const atTarget = pickRepresentativeAT(g.rows);
-      const ok = addSelection({ brs: LAST_ROW.brs, at: atTarget, rota: g.cage });
-      if(ok){
-        showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${LAST_ROW.brs} → ${atTarget}`});
-        playAddedSound();
-        if (navigator.vibrate) { try{ navigator.vibrate(10); }catch(_){} }
+      if(neighMode){
+        // Pede BR ao usuário
+        const br = (prompt('Informe o BR para adicionar nesta rota:')||'').trim();
+        if(!br){ showToastCenter({ok:false,title:'BR não informado'}); return; }
+        const found = INDEX_BRS.get(normBRS(br));
+        if(!found){
+          showToastCenter({ok:false,title:'BR não encontrado', subtitle:'Esse BR não existe na base'}); playErrorSound(); return;
+        }
+        const atTarget = pickRepresentativeAT(g.rows);
+        const ok = addSelection({ brs: found.brs, at: atTarget, rota: g.cage });
+        if(ok){
+          showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${found.brs} → ${atTarget}`});
+          playAddedSound();
+          if (navigator.vibrate) { try{ navigator.vibrate(10); }catch(_){} }
+        }else{
+          showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
+        }
       }else{
-        showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'});
-        playErrorSound();
+        if(!LAST_ROW) return;
+        const atTarget = pickRepresentativeAT(g.rows);
+        const ok = addSelection({ brs: LAST_ROW.brs, at: atTarget, rota: g.cage });
+        if(ok){
+          showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${LAST_ROW.brs} → ${atTarget}`});
+          playAddedSound();
+          if (navigator.vibrate) { try{ navigator.vibrate(10); }catch(_){} }
+        }else{
+          showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
+        }
       }
     });
     tbody.appendChild(tr);
   });
 
-  $("#sameInfo").textContent = sameFiltered.length
-    ? `Encontradas ${sameFiltered.length} rotas com o mesmo Neighborhood.`
-    : "Nenhuma outra rota com o mesmo Neighborhood.";
-}
-
-function rerenderSame(){
-  if(!LAST_ROW) return;
-  renderResult(LAST_ROW, LAST_SAME);
+  // Mostrar/ocultar painéis
+  $("#resultRight").style.display = "block";
+  $("#placeholderRight").style.display = "none";
 }
 
 /* ========= Seleções / Realocações ========= */
@@ -1167,7 +1207,7 @@ async function loadFromGoogleSheet(url, tabTitle = DEFAULT_CTS_TITLE){
     $("#scanMsg").innerHTML = '<span class="ok">Base carregada! Já pode bipar.</span>';
 
     hideLoading();
-    showToastCenter({ok:true, title:'Pacotes prontos', subtitle:'Lidos do Google Sheets (CTs)'});
+    showToastCenter({ok:true, title:'Pacotes prontos', subtitle:'Lidos do Google Sheets (CTs)'});    
     focusScan();
 
     try{
@@ -1215,7 +1255,6 @@ async function listTabsFromUrlForImport(){
     select.innerHTML = sheets.map(t => `<option value="${t}">${t}</option>`).join('');
     select.disabled = false;
 
-    // Seleciona automaticamente "Calculation Tasks (CTs)" se existir
     const preferred = sheets.find(t => t.trim().toLowerCase() === DEFAULT_CTS_TITLE.toLowerCase());
     select.value = preferred || sheets[0];
   }catch(_){
@@ -1240,29 +1279,6 @@ async function doImportFromSheets(){
   await loadFromGoogleSheet(url, tab);
 }
 
-/* ========= Busca por bairro (novo) ========= */
-function openBairroFromNotFound(){ closeModal(); openBairro(); }
-
-function doSearchByBairro(){
-  const raw = $("#bairroInput").value.trim();
-  if(!raw){ showInfo('Bairro', 'Digite um bairro.'); return; }
-  if(!INDEX_BAIRRO_CLUSTER.size){ showInfo('Base', 'Carregue a base primeiro.'); return; }
-
-  // Normaliza igual ao índice
-  const key = stripAccents(raw).trim();
-  const same = findSameNeighborhoodGrouped(key);
-  if(!same.length){
-    showInfo('Sem resultados', `Não encontramos rotas para o bairro <b>${raw}</b>.`);
-    return;
-  }
-
-  // "Linha" sintética para exibir à esquerda
-  LAST_ROW = { brs:'', endereco:'', bairro: raw, at:'', veiculo:'', rota:'' };
-  LAST_SAME = same;
-  closeModal();
-  renderResult(LAST_ROW, LAST_SAME);
-}
-
 /* ========= Ações ========= */
 function handleScan(){
   const input = $("#scan");
@@ -1271,12 +1287,7 @@ function handleScan(){
   if(!INDEX_BRS.size){ showInfo('Base vazia', 'Carregue a planilha primeiro.'); return; }
 
   const row = INDEX_BRS.get(normBRS(code));
-  if(!row){
-    input.value='';
-    // abre modal com opção de pesquisar por bairro
-    openNotFound();
-    return;
-  }
+  if(!row){ showInfo('Não encontrado', 'Código não localizado na base.'); input.value=''; focusScan(); return; }
 
   const same = findSameNeighborhoodGrouped(row.bairro);
   LAST_ROW = row; LAST_SAME = same;
@@ -1287,7 +1298,7 @@ function handleScan(){
 }
 
 function resetBase(){
-  BASE_ROWS = []; INDEX_BRS.clear(); INDEX_BAIRRO_CLUSTER.clear(); INDEX_TOTAL_BY_CAGE.clear(); ALL_BAIRROS=[];
+  BASE_ROWS = []; INDEX_BRS.clear(); INDEX_BAIRRO_CLUSTER.clear(); INDEX_TOTAL_BY_CAGE.clear();
   LAST_ROW=null; LAST_SAME=[];
   $("#baseInfo").textContent = 'nenhuma carregada';
   $("#sheetInfo").textContent = '';
@@ -1297,6 +1308,14 @@ function resetBase(){
   $("#placeholderRight").style.display='block';
   $("#scanMsg").textContent = 'Carregue a planilha para habilitar a busca.';
   clearSelections();
+
+  // Neighborhood UI
+  NEIGH_SELECTED.clear();
+  NEIGH_LAST_RESULTS = [];
+  $("#neighChips").innerHTML = '';
+  $("#neighSuggest").classList.add('hidden');
+  $("#neighSearch").value = '';
+  $("#neighMsg").textContent = '';
 }
 
 /* ========= Drag & Drop + Auto load ========= */
@@ -1319,53 +1338,6 @@ function resetBase(){
     if(f) handleLoad(f);
   });
 })();
-
-/* ========= Onboarding & Listeners ========= */
-document.addEventListener('DOMContentLoaded', ()=>{
-  $("#btnLoad").addEventListener("click", ()=>handleLoad());
-  $("#btnScan").addEventListener("click", handleScan);
-  $("#scan").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); handleScan(); } });
-  $("#btnReset").addEventListener("click", resetBase);
-
-  $("#btnExport").addEventListener("click", exportSelections);
-  $("#btnClearSel").addEventListener("click", clearSelections);
-
-  // ENVIAR → modal e ações
-  $("#btnSendSheets").addEventListener("click", openSheetsModal);
-  $("#sheetUrl").addEventListener("change", listTabsFromUrl);
-  $("#sheetUrl").addEventListener("blur", listTabsFromUrl);
-  $("#btnDoSend").addEventListener("click", doSendToSheets);
-
-  // IMPORTAR (LER DO SHEETS) → modal e ações
-  $("#btnLoadSheets").addEventListener("click", openImportModal);
-  $("#importUrl").addEventListener("change", listTabsFromUrlForImport);
-  $("#importUrl").addEventListener("blur", listTabsFromUrlForImport);
-  $("#btnDoImport").addEventListener("click", doImportFromSheets);
-
-  // Not found → bairro
-  $("#btnOpenBairro").addEventListener("click", openBairroFromNotFound);
-  $("#btnBuscarBairro").addEventListener("click", doSearchByBairro);
-  $("#bairroInput").addEventListener("keydown", e=>{ if(e.key==='Enter'){ e.preventDefault(); doSearchByBairro(); } });
-
-  // Onboarding
-  $("#btnHelp").addEventListener("click", openAsk);
-  $("#fabHelp").addEventListener("click", openAsk);
-  $("#btnAskYes").addEventListener("click", ()=>{ try{localStorage.setItem(onboardingKey(),'1');}catch(_){ } closeModal(); });
-  $("#btnAskNo").addEventListener("click", openTut);
-  $("#btnTutPrev").addEventListener("click", ()=>{ if(tutIndex>0){ tutIndex--; renderTut(); } });
-  $("#btnTutNext").addEventListener("click", ()=>{ if(tutIndex<TUTORIAL_STEPS.length-1){ tutIndex++; renderTut(); } });
-  $("#btnTutDone").addEventListener("click", finishTut);
-
-  // Rascunho local até logar
-  loadHistoryForCurrentUser();
-
-  // Info última base (cosmético)
-  const last = JSON.parse(localStorage.getItem(LS_LAST_BASE) || 'null');
-  if (last) {
-    const when = new Date(last.when || Date.now()).toLocaleString();
-    $("#baseInfo").textContent = `${last.rows} linhas carregadas (última: ${last.name} em ${when})`;
-  }
-});
 
 /* ===== Tutorial ===== */
 const TUTORIAL_STEPS = [
@@ -1393,6 +1365,150 @@ function finishTut(){ try{ localStorage.setItem(onboardingKey(),'1'); }catch(_){
 function maybeShowOnboarding(){
   try{ if(!localStorage.getItem(onboardingKey())) openAsk(); }catch(_){ openAsk(); }
 }
+
+/* ======= Neighborhood Search: lógica ======= */
+function neighKeyFromRaw(name){ return stripAccents(String(name||'').trim()); }
+function allNeighborhoodKeys(){
+  return Array.from(INDEX_BAIRRO_CLUSTER.keys()).sort((a,b)=> a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
+}
+function searchNeighborhoods(term){
+  const t = norm(term);
+  if(!t) return [];
+  const keys = allNeighborhoodKeys();
+  // busca contém (case/accents insensitive)
+  const res = keys.filter(k => norm(k).includes(t));
+  return res.slice(0, 20); // limita sugestões
+}
+
+function renderNeighSuggest(list){
+  const box = $("#neighSuggest");
+  if(!list.length){ box.classList.add('hidden'); box.innerHTML=''; return; }
+  box.innerHTML = list.map(n => `<div class="suggest-item" data-k="${n}">${n}</div>`).join('');
+  box.classList.remove('hidden');
+  box.querySelectorAll('.suggest-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      NEIGH_SELECTED.add(String(el.dataset.k));
+      renderNeighChips();
+      $("#neighSuggest").classList.add('hidden');
+      $("#neighSearch").value='';
+      $("#neighMsg").textContent = `${NEIGH_SELECTED.size} bairro(s) selecionado(s).`;
+    });
+  });
+}
+
+function renderNeighChips(){
+  const wrap = $("#neighChips");
+  wrap.innerHTML = '';
+  Array.from(NEIGH_SELECTED).sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(k=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip-x';
+    chip.innerHTML = `<span>${k}</span><button title="Remover">×</button>`;
+    chip.querySelector('button').addEventListener('click', ()=>{
+      NEIGH_SELECTED.delete(k);
+      renderNeighChips();
+      $("#neighMsg").textContent = `${NEIGH_SELECTED.size} bairro(s) selecionado(s).`;
+    });
+    wrap.appendChild(chip);
+  });
+}
+
+/* Combina grupos (cage -> rows) de vários bairros em uma lista única */
+function combineGroupsForNeighborhoods(keys){
+  const out = new Map(); // cage -> { cage, rows, bairro: "<multi>" | single}
+  keys.forEach(k=>{
+    const mapC = INDEX_BAIRRO_CLUSTER.get(k);
+    if(!mapC) return;
+    for(const [cage, rows] of mapC.entries()){
+      if(!VEH_FILTER.size || VEH_FILTER.has((rows[0]?.veiculo||'').trim())){
+        if(!out.has(cage)) out.set(cage, { cage, rows: [], bairro: k });
+        out.get(cage).rows.push(...rows);
+      }
+    }
+  });
+  return Array.from(out.values());
+}
+
+function renderByNeighborhood(){
+  if(NEIGH_SELECTED.size === 0){ return; }
+  const groups = combineGroupsForNeighborhoods(Array.from(NEIGH_SELECTED));
+  NEIGH_LAST_RESULTS = groups;
+  // Bairro label: quando múltiplos, coloca "(vários)"
+  const label = NEIGH_SELECTED.size === 1 ? Array.from(NEIGH_SELECTED)[0] : '(vários)';
+  fillSameTable(groups, label, /*neighMode=*/true);
+}
+
+/* ======= Listeners UI ======= */
+document.addEventListener('DOMContentLoaded', ()=>{
+  $("#btnLoad").addEventListener("click", ()=>handleLoad());
+  $("#btnScan").addEventListener("click", handleScan);
+  $("#scan").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); handleScan(); } });
+  $("#btnReset").addEventListener("click", resetBase);
+
+  $("#btnExport").addEventListener("click", exportSelections);
+  $("#btnClearSel").addEventListener("click", clearSelections);
+
+  // ENVIAR → modal e ações
+  $("#btnSendSheets").addEventListener("click", openSheetsModal);
+  $("#sheetUrl").addEventListener("change", listTabsFromUrl);
+  $("#sheetUrl").addEventListener("blur", listTabsFromUrl);
+  $("#btnDoSend").addEventListener("click", doSendToSheets);
+
+  // IMPORTAR (LER DO SHEETS) → modal e ações
+  $("#btnLoadSheets").addEventListener("click", openImportModal);
+  $("#importUrl").addEventListener("change", listTabsFromUrlForImport);
+  $("#importUrl").addEventListener("blur", listTabsFromUrlForImport);
+  $("#btnDoImport").addEventListener("click", doImportFromSheets);
+
+  // Onboarding
+  $("#btnHelp").addEventListener("click", openAsk);
+  $("#fabHelp").addEventListener("click", openAsk);
+  $("#btnAskYes").addEventListener("click", ()=>{ try{localStorage.setItem(onboardingKey(),'1');}catch(_){ } closeModal(); });
+  $("#btnAskNo").addEventListener("click", openTut);
+  $("#btnTutPrev").addEventListener("click", ()=>{ if(tutIndex>0){ tutIndex--; renderTut(); } });
+  $("#btnTutNext").addEventListener("click", ()=>{ if(tutIndex<TUTORIAL_STEPS.length-1){ tutIndex++; renderTut(); } });
+  $("#btnTutDone").addEventListener("click", finishTut);
+
+  // Rascunho local até logar
+  loadHistoryForCurrentUser();
+
+  // Info última base (cosmético)
+  const last = JSON.parse(localStorage.getItem(LS_LAST_BASE) || 'null');
+  if (last) {
+    const when = new Date(last.when || Date.now()).toLocaleString();
+    $("#baseInfo").textContent = `${last.rows} linhas carregadas (última: ${last.name} em ${when})`;
+  }
+
+  // Neighborhood search interactions
+  const doSuggest = debounce(()=>{
+    const t = $("#neighSearch").value.trim();
+    if(!t){ $("#neighSuggest").classList.add('hidden'); $("#neighSuggest").innerHTML=''; return; }
+    const list = searchNeighborhoods(t);
+    renderNeighSuggest(list);
+  }, 140);
+
+  $("#neighSearch").addEventListener('input', doSuggest);
+  document.addEventListener('click', (e)=>{
+    if(!$("#neighSuggest").contains(e.target) && e.target !== $("#neighSearch")){
+      $("#neighSuggest").classList.add('hidden');
+    }
+  });
+
+  $("#btnListByNeigh").addEventListener('click', ()=>{
+    if(NEIGH_SELECTED.size===0){
+      showInfo('Neighborhood', 'Selecione ao menos um bairro na pesquisa.');
+      return;
+    }
+    renderByNeighborhood();
+  });
+
+  $("#btnClearNeigh").addEventListener('click', ()=>{
+    NEIGH_SELECTED.clear();
+    renderNeighChips();
+    $("#neighMsg").textContent = '';
+    $("#neighSearch").value='';
+    $("#neighSuggest").classList.add('hidden');
+  });
+});
 </script>
 </body>
 </html>
