@@ -158,7 +158,7 @@
     .chip-x button{all:unset;cursor:pointer;font-weight:900;opacity:.7}
     .chip-x button:hover{opacity:1}
 
-    /* ===== TOAST CENTRAL ===== */
+    /* ===== TOAST ===== */
     .toast-center{
       position:fixed;left:50%;top:50%;
       transform:translate(-50%,-50%) scale(.94);
@@ -198,15 +198,7 @@
     }
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* FAB Ajuda */
-    .fab{
-      position:fixed;right:18px;bottom:18px;z-index:40;
-      background:var(--primary);color:#fff;border:0;border-radius:999px;
-      padding:12px 16px;font-weight:900;box-shadow:0 10px 25px rgba(255,87,34,.35);cursor:pointer
-    }
-    .fab:hover{background:var(--primary-2)}
-
-    /* ===== Detalhes extras de UI ===== */
+    /* Detalhes extras */
     .chipCheck{display:inline-flex;align-items:center;margin:4px 6px 0 0}
     .chipCheck input{display:none}
     .chipCheck .chip{border:1px solid #eee; user-select:none; cursor:pointer}
@@ -239,7 +231,6 @@
       <button class="btn" id="btnLoadSheets" title="Ler dados do Google Sheets (CTs)">Ler Romaneio Sheets</button>
       <button class="btn secondary" id="btnReset" title="Limpa base e resultados">Limpar base</button>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <button class="btn ghost small" id="btnHelp" title="Como usar">Ajuda</button>
         <div id="loadMsg" class="muted">Aba padrão: <b>Planilha1</b></div>
       </div>
     </div>
@@ -257,7 +248,6 @@
         <input id="scan" placeholder="Bipe/insira o BRS... (Enter)" autocomplete="off" disabled />
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn" id="btnScan" disabled>Bipar</button>
-          <!-- Novo: abre modal de Neighborhood -->
           <button class="btn secondary" id="btnNeighModal" disabled>Pesquisar por Neighborhood</button>
         </div>
       </div>
@@ -321,7 +311,6 @@
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <div class="label-strong">Realocações selecionadas</div>
       <div class="actions">
-        <!-- NOVO BOTÃO -->
         <button class="btn small ghost" id="btnCopy" title="Copiar BR e AT para a área de transferência">Copiar BR e AT</button>
         <button class="btn small ghost" id="btnClearSel" title="Limpar tabela">Limpar</button>
         <button class="btn small" id="btnExport">Exportar (.xlsx)</button>
@@ -341,12 +330,6 @@
         </thead>
         <tbody></tbody>
       </table>
-    </div>
-
-    <!-- Log de envios -->
-    <div class="log" id="sendLog">
-      <h4>Histórico de envios</h4>
-      <ul id="sendLogList"><li class="muted">Nenhum envio ainda.</li></ul>
     </div>
   </section>
 
@@ -394,7 +377,6 @@
 
       <div class="listbox" id="neighList" style="margin-top:8px">
         <div class="list-head">Bairros</div>
-        <!-- itens via JS -->
       </div>
 
       <div style="margin-top:8px">
@@ -483,36 +465,7 @@
       <button class="btn" id="btnDoImport">Carregar</button>
     </footer>
   </div>
-
-  <!-- ONBOARDING: pergunta -->
-  <div id="askModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="askTitle">
-    <header id="askTitle">Você já sabe usar o site?</header>
-    <div class="content">
-      <p>Se você já conhece o fluxo, pode ir direto. Se preferir, te mostro um passo-a-passo curto (menos de 1 minuto).</p>
-    </div>
-    <footer>
-      <button class="btn cancel" id="btnAskYes">Sim, já sei</button>
-      <button class="btn" id="btnAskNo">Não, quero o tutorial</button>
-    </footer>
-  </div>
-
-  <!-- ONBOARDING: tutorial -->
-  <div id="tutModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="tutTitle">
-    <header id="tutTitle">Como usar – passo a passo</header>
-    <div class="content">
-      <div id="tutBody"></div>
-      <div class="dots" id="tutDots"></div>
-    </div>
-    <footer>
-      <button class="btn cancel" id="btnTutPrev">Voltar</button>
-      <button class="btn secondary" id="btnTutDone" style="display:none">Concluir</button>
-      <button class="btn" id="btnTutNext">Próximo</button>
-    </footer>
-  </div>
 </div>
-
-<!-- FAB (atalho) -->
-<button class="fab" id="fabHelp" title="Tutorial">Ajuda</button>
 
 <script>
 /* ====== OAuth (GIS) ====== */
@@ -526,16 +479,12 @@ let currentEmail = null;
 
 /* ====== Persistência por usuário ====== */
 const LS_PREFIX = 'spr_realloc_history_';
-const LS_SENDLOG = 'spr_realloc_sendlog_';
 const LS_LAST_SHEET = 'spr_realloc_last_sheet_';
 const LS_VEH = 'veh_filter';
 const LS_LAST_BASE = 'last_base_info';
-const ONBOARD_KEY = 'spr_onboarding_done_';
 
 function storageKey(){ return LS_PREFIX + (currentEmail || 'anon'); }
-function sendLogKey(){ return LS_SENDLOG + (currentEmail || 'anon'); }
 function lastSheetKey(){ return LS_LAST_SHEET + (currentEmail || 'anon'); }
-function onboardingKey(){ return ONBOARD_KEY + (currentEmail || 'anon'); }
 
 /* ====== Utils/UI ====== */
 const $ = s => document.querySelector(s);
@@ -584,14 +533,12 @@ const overlay = $("#overlay");
 const infoModal = $("#infoModal");
 const sheetsModal = $("#sheetsModal");
 const importModal = $("#importModal");
-const askModal = $("#askModal");
-const tutModal = $("#tutModal");
 const neighModal = $("#neighModal");
 const brModal = $("#brModal");
 
 function openModal(which){
   overlay.style.display = 'flex';
-  [infoModal, sheetsModal, importModal, askModal, tutModal, neighModal, brModal].forEach(x=>x.classList.add('hidden'));
+  [infoModal, sheetsModal, importModal, neighModal, brModal].forEach(x=>x.classList.add('hidden'));
   which.classList.remove('hidden');
 }
 function closeModal(){ overlay.style.display = 'none'; }
@@ -601,7 +548,7 @@ function showInfo(title, html){
   openModal(infoModal);
 }
 
-/* ====== Persistência / Histórico ====== */
+/* ====== Persistência / Seleções ====== */
 let SELECTED = []; // {brs, at, rota}
 function saveHistory(){ try{ localStorage.setItem(storageKey(), JSON.stringify(SELECTED)); }catch(_){} }
 function loadHistoryForCurrentUser(){
@@ -609,30 +556,6 @@ function loadHistoryForCurrentUser(){
     const raw = localStorage.getItem(storageKey());
     if(raw){ SELECTED = Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : []; renderSelections(); }
   }catch(_){}
-  renderSendLog();
-  maybeShowOnboarding();
-}
-function appendSendLog(entry){
-  try{
-    const raw = localStorage.getItem(sendLogKey());
-    const arr = raw ? JSON.parse(raw) : [];
-    arr.unshift(entry);
-    localStorage.setItem(sendLogKey(), JSON.stringify(arr.slice(0,50)));
-  }catch(_){}
-  renderSendLog();
-}
-function renderSendLog(){
-  const ul = $("#sendLogList");
-  ul.innerHTML = '';
-  try{
-    const arr = JSON.parse(localStorage.getItem(sendLogKey())||'[]');
-    if(!arr.length){ ul.innerHTML = '<li class="muted">Nenhum envio ainda.</li>'; return; }
-    for(const e of arr){
-      const li = document.createElement('li');
-      li.innerHTML = `<b>${e.count}</b> itens → <span class="chip">${e.sheetTitle||'?'}</span> <span class="muted">@ ${e.spreadsheetId.slice(0,8)}…</span> <span class="when">${new Date(e.when).toLocaleString()}</span>`;
-      ul.appendChild(li);
-    }
-  }catch(_){ ul.innerHTML = '<li class="muted">Nenhum envio ainda.</li>'; }
 }
 
 /* ====== OAuth init ====== */
@@ -795,7 +718,6 @@ function buildIndexes(){
     INDEX_TOTAL_BY_CAGE.set(cage, (INDEX_TOTAL_BY_CAGE.get(cage)||0) + 1);
   }
 
-  // Habilita botões atrelados à base
   const enable = INDEX_BAIRRO_CLUSTER.size > 0;
   $("#btnNeighModal").disabled = !enable;
 }
@@ -822,8 +744,7 @@ function renderFilterUI(){
     label.querySelector('input').addEventListener('change', e=>{
       if(e.target.checked) VEH_FILTER.add(t); else VEH_FILTER.delete(t);
       localStorage.setItem(LS_VEH, JSON.stringify(Array.from(VEH_FILTER)));
-      rerenderSame(); // BR mode
-      // Neighborhood mode usa botão Aplicar (renderiza depois)
+      rerenderSame();
     });
   });
   bar.style.display = VEH_TYPES.length ? 'block' : 'none';
@@ -1024,21 +945,18 @@ function exportSelections(){
   XLSX.writeFile(wb, `realocacoes_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
-/* ===== NOVO: Copiar BR e AT para a área de transferência ===== */
+/* ===== Copiar BR e AT ===== */
 async function copySelections(){
   if(!SELECTED.length){
     showToastCenter({ok:false, title:'Nada para copiar', subtitle:'A tabela de realocações está vazia.'});
     return;
   }
-  // Formato: "BR<TAB>AT" por linha — perfeito para Sheets/Excel
-  const text = SELECTED.map(it => `${(it.brs||'').toString()}\t${(it.at||'').toString()}`).join('\n');
-
+  const text = SELECTED.map(it => `${(it.brs||'')}\t${(it.at||'')}`).join('\n');
   try{
     await navigator.clipboard.writeText(text);
     showToastCenter({ok:true, title:'Copiado!', subtitle:`${SELECTED.length} linha(s) (BR e AT)`});
     try{ navigator.vibrate?.(12); }catch(_){}
   }catch(_){
-    // Fallback
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.position='fixed'; ta.style.left='-9999px';
@@ -1064,385 +982,12 @@ async function listTabsFromUrl(){
   if(!spreadsheetId){ select.innerHTML = '<option value="">URL inválida</option>'; return; }
   try{
     await ensureAuth();
-    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`, {
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetsId}`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
-    if(!res.ok){ select.innerHTML = '<option value="">Falha ao listar abas</option>'; return; }
-    const data = await res.json();
-    const sheets = (data.sheets||[]).map(s => s.properties?.title).filter(Boolean);
-    if(!sheets.length){ select.innerHTML = '<option value="">Sem abas visíveis</option>'; return; }
-    select.innerHTML = sheets.map(t => `<option value="${t}">${t}</option>`).join('');
-    select.disabled = false;
-
-    try{
-      const last = JSON.parse(localStorage.getItem(lastSheetKey())||'null');
-      if(last && last.spreadsheetId === spreadsheetId && sheets.includes(last.sheetTitle)){
-        select.value = last.sheetTitle;
-        $("#startCell").value = last.startCell || 'A1';
-      }
-    }catch(_){}
-  }catch(_){
-    select.innerHTML = '<option value="">Erro ao carregar abas</option>';
-  }
-}
-function openSheetsModal(){
-  $("#sheetUrl").value = '';
-  $("#sheetTab").innerHTML = '<option value="">Cole a URL para listar as abas…</option>';
-  $("#sheetTab").disabled = true;
-  $("#startCell").value = 'A1';
-  try{
-    const last = JSON.parse(localStorage.getItem(lastSheetKey())||'null');
-    if(last){
-      $("#sheetUrl").value = last.url || '';
-      if(last.url) listTabsFromUrl();
-    }
   }catch(_){}
-  openModal(sheetsModal);
 }
-async function doSendToSheets(){
-  if(!SELECTED.length){ showInfo('Envio', 'Nenhuma realocação na tabela.'); return; }
-  const link = $("#sheetUrl").value.trim();
-  if(!link){ showInfo('URL inválida', 'Cole o link completo da planilha do Google.'); return; }
-  const spreadsheetId = parseSpreadsheetId(link);
-  if(!spreadsheetId){ showInfo('URL inválida', 'Precisa ser um link de <b>docs.google.com/spreadsheets</b>.'); return; }
-  await ensureAuth();
-  const sheetTitle = $("#sheetTab").value.trim();
-  const startCell  = $("#startCell").value.trim() || 'A1';
-  if(!sheetTitle){ showInfo('Aba obrigatória', 'Selecione a aba de destino.'); return; }
-  try{
-    localStorage.setItem(lastSheetKey(), JSON.stringify({ url: link, spreadsheetId, sheetTitle, startCell }));
-  }catch(_){}
-  const range = `${sheetTitle}!${startCell}`;
-  const values = SELECTED.map(it=>[it.brs||'', it.at||'']);
-  const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
-  try{
-    const res = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ values })
-    });
-    if(!res.ok){ const txt = await res.text(); throw new Error(txt); }
-    closeModal();
-    showToastCenter({ok:true, title:'Enviado!', subtitle:'Dados enviados ao Sheets'});
-    appendSendLog({ when: Date.now(), count: values.length, spreadsheetId, sheetTitle });
-  }catch(err){
-    showToastCenter({ok:false, title:'Falha ao enviar'});
-    showInfo('Falha ao enviar', 'Verifique permissões e se a API do Sheets está ativa.<br><small>'+ (err?.message||err) +'</small>');
-  }
-}
-
-/* ========= Ler do Sheets ========= */
-const DEFAULT_CTS_TITLE = "Calculation Tasks (CTs)";
-async function loadFromGoogleSheet(url, tabTitle = DEFAULT_CTS_TITLE){
-  const spreadsheetId = parseSpreadsheetId(url);
-  if(!spreadsheetId){
-    showInfo('URL inválida', 'Cole um link de <b>docs.google.com/spreadsheets</b>.');
-    return;
-  }
-  await ensureAuth();
-  showLoading('Lendo Google Sheets (CTs)…');
-  try{
-    const range = encodeURIComponent(`'${tabTitle}'!A:ZZZ`);
-    const api = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
-    const res = await fetch(api, { headers: { Authorization: `Bearer ${accessToken}` } });
-    if(!res.ok){
-      const msg = await res.text();
-      throw new Error(`Falha ao ler a aba "${tabTitle}".<br><small>${msg}</small>`);
-    }
-    const data = await res.json();
-    const values = Array.isArray(data.values) ? data.values : [];
-    if(values.length < 2){ throw new Error(`A aba <b>${tabTitle}</b> não tem linhas suficientes (precisa de cabeçalho + dados).`); }
-    const header = values[0].map(h => String(h||'').trim());
-    const rowsObj = values.slice(1).map(row => {
-      const o = {};
-      for(let i=0;i<header.length;i++){
-        const key = header[i] || `Col_${i+1}`;
-        o[key] = (row[i] !== undefined && row[i] !== null) ? String(row[i]) : '';
-      }
-      return o;
-    });
-    BASE_ROWS = rowsObj.map(normalizeFromExt).filter(r=>r.brs || r.bairro);
-    buildIndexes();
-    rebuildVehicleFilterFromBase();
-
-    $("#baseInfo").textContent = `${BASE_ROWS.length} linhas carregadas (Google Sheets)`;
-    $("#sheetInfo").textContent = `Aba usada: ${tabTitle}`;
-    $("#scan").disabled = false; $("#btnScan").disabled = false; $("#btnNeighModal").disabled = false;
-    $("#scanMsg").innerHTML = '<span class="ok">Base carregada! Já pode bipar ou pesquisar Neighborhood.</span>';
-
-    hideLoading();
-    showToastCenter({ok:true, title:'Pacotes prontos', subtitle:'Lidos do Google Sheets (CTs)'});    
-    focusScan();
-
-    try{
-      localStorage.setItem(LS_LAST_BASE, JSON.stringify({
-        name: `Sheets:${spreadsheetId}/${tabTitle}`,
-        rows: BASE_ROWS.length,
-        when: Date.now()
-      }));
-    }catch(_){}
-  }catch(err){
-    hideLoading();
-    showToastCenter({ok:false, title:'Falha ao ler do Sheets'});
-    showInfo('Falha ao ler do Sheets', err?.message || String(err));
-  }
-}
-async function listTabsFromUrlForImport(){
-  const link = $("#importUrl").value.trim();
-  const select = $("#importTab");
-  select.innerHTML = '<option value="">Carregando abas…</option>'; select.disabled = true;
-  const spreadsheetId = parseSpreadsheetId(link);
-  if(!spreadsheetId){ select.innerHTML = '<option value="">URL inválida</option>'; return; }
-  try{
-    await ensureAuth();
-    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    if(!res.ok){ select.innerHTML = '<option value="">Falha ao listar abas</option>'; return; }
-    const data = await res.json();
-    const sheets = (data.sheets||[]).map(s => s.properties?.title).filter(Boolean);
-    if(!sheets.length){ select.innerHTML = '<option value="">Sem abas visíveis</option>'; return; }
-    select.innerHTML = sheets.map(t => `<option value="${t}">${t}</option>`).join('');
-    select.disabled = false;
-    const preferred = sheets.find(t => t.trim().toLowerCase() === DEFAULT_CTS_TITLE.toLowerCase());
-    select.value = preferred || sheets[0];
-  }catch(_){
-    select.innerHTML = '<option value="">Erro ao carregar abas</option>';
-  }
-}
-function openImportModal(){
-  $("#importUrl").value = '';
-  $("#importTab").innerHTML = '<option value="">Cole a URL para listar as abas…</option>';
-  $("#importTab").disabled = true;
-  openModal(importModal);
-}
-async function doImportFromSheets(){
-  const url = $("#importUrl").value.trim();
-  if(!url){ showInfo('URL inválida', 'Cole a URL do Google Sheets.'); return; }
-  const tab = $("#importTab").value || DEFAULT_CTS_TITLE;
-  closeModal();
-  await loadFromGoogleSheet(url, tab);
-}
-
-/* ========= Ações ========= */
-function handleScan(){
-  const input = $("#scan");
-  const code = input.value.trim();
-  if(!code){ showInfo('Busca', 'Digite/escaneie um <b>BRS</b>.'); return; }
-  if(!INDEX_BRS.size){ showInfo('Base vazia', 'Carregue a planilha primeiro.'); return; }
-
-  const row = INDEX_BRS.get(normBRS(code));
-  if(!row){ showInfo('Não encontrado', 'Código não localizado na base.'); input.value=''; focusScan(); return; }
-
-  const same = findSameNeighborhoodGrouped(row.bairro);
-  LAST_ROW = row; LAST_SAME = same;
-
-  renderResult(row, same);
-  $("#scanMsg").innerHTML = '<span class="ok">Pesquisa concluída.</span>';
-  input.value=''; focusScan();
-}
-function resetBase(){
-  BASE_ROWS = []; INDEX_BRS.clear(); INDEX_BAIRRO_CLUSTER.clear(); INDEX_TOTAL_BY_CAGE.clear();
-  LAST_ROW=null; LAST_SAME=[];
-  $("#baseInfo").textContent = 'nenhuma carregada';
-  $("#sheetInfo").textContent = '';
-  $("#scan").disabled = true; $("#btnScan").disabled = true; $("#btnNeighModal").disabled = true;
-  $("#scan").value='';
-  $("#resultLeft").style.display='none';
-  $("#resultRight").style.display='none';
-  $("#placeholderRight").style.display='block';
-  $("#scanMsg").textContent = 'Carregue a planilha para habilitar a busca.';
-  clearSelections();
-}
-
-/* ========= Neighborhood Modal ========= */
-function allNeighborhoodKeys(){
-  return Array.from(INDEX_BAIRRO_CLUSTER.keys()).sort((a,b)=> a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
-}
-function visibleNeighborhoods(filter){
-  const t = norm(filter||'');
-  const all = allNeighborhoodKeys();
-  if(!t) return all;
-  return all.filter(k => norm(k).includes(t));
-}
-function renderNeighList(){
-  const list = $("#neighList");
-  const filter = $("#neighQuery").value;
-  const items = visibleNeighborhoods(filter);
-  list.innerHTML = `<div class="list-head">Bairros (${items.length})</div>`;
-  if(!items.length){
-    list.innerHTML += `<div class="list-item"><em class="muted">Nenhum bairro encontrado</em></div>`;
-    return;
-  }
-  items.forEach(k=>{
-    const id = 'n_'+k.replace(/\W+/g,'_');
-    const checked = NEIGH_SELECTED.has(k) ? 'checked' : '';
-    const row = document.createElement('div');
-    row.className = 'list-item';
-    row.innerHTML = `<input type="checkbox" id="${id}" ${checked}><label for="${id}" style="flex:1;cursor:pointer">${k}</label>`;
-    row.querySelector('input').addEventListener('change', e=>{
-      if(e.target.checked) NEIGH_SELECTED.add(k); else NEIGH_SELECTED.delete(k);
-      renderNeighChips();
-    });
-    list.appendChild(row);
-  });
-}
-function renderNeighChips(){
-  const wrap = $("#neighChips"); wrap.innerHTML = '';
-  Array.from(NEIGH_SELECTED).sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(k=>{
-    const chip = document.createElement('div');
-    chip.className = 'chip-x';
-    chip.innerHTML = `<span>${k}</span><button title="Remover">×</button>`;
-    chip.querySelector('button').addEventListener('click', ()=>{
-      NEIGH_SELECTED.delete(k);
-      renderNeighChips();
-      renderNeighList();
-    });
-    wrap.appendChild(chip);
-  });
-}
-function openNeigh(){
-  $("#neighQuery").value = '';
-  renderNeighList();
-  renderNeighChips();
-  openModal(neighModal);
-}
-function applyNeighSelection(){
-  // Combina grupos respeitando filtro de veículo
-  const cages = new Map(); // cage -> {cage, rows, bairro}
-  Array.from(NEIGH_SELECTED).forEach(k=>{
-    const mapC = INDEX_BAIRRO_CLUSTER.get(k);
-    if(!mapC) return;
-    for(const [cage, rows] of mapC.entries()){
-      if(!VEH_FILTER.size || VEH_FILTER.has((rows[0]?.veiculo||'').trim())){
-        const cur = cages.get(cage) || { cage, rows: [], bairro: k };
-        cur.rows.push(...rows);
-        cages.set(cage, cur);
-      }
-    }
-  });
-  const groups = Array.from(cages.values());
-  fillSameTable(groups, NEIGH_SELECTED.size === 1 ? Array.from(NEIGH_SELECTED)[0] : '(vários)', true);
-  closeModal();
-}
-
-/* ========= Listeners ========= */
-document.addEventListener('DOMContentLoaded', ()=>{
-  $("#btnLoad").addEventListener("click", ()=>handleLoad());
-  $("#btnScan").addEventListener("click", handleScan);
-  $("#scan").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); handleScan(); } });
-  $("#btnReset").addEventListener("click", resetBase);
-
-  $("#btnExport").addEventListener("click", exportSelections);
-  $("#btnClearSel").addEventListener("click", clearSelections);
-
-  // NOVO: copiar BR e AT
-  $("#btnCopy").addEventListener("click", copySelections);
-
-  // ENVIAR → modal e ações
-  $("#btnSendSheets").addEventListener("click", openSheetsModal);
-  $("#sheetUrl").addEventListener("change", listTabsFromUrl);
-  $("#sheetUrl").addEventListener("blur", listTabsFromUrl);
-  $("#btnDoSend").addEventListener("click", doSendToSheets);
-
-  // IMPORTAR (LER DO SHEETS)
-  $("#btnLoadSheets").addEventListener("click", openImportModal);
-  $("#importUrl").addEventListener("change", listTabsFromUrlForImport);
-  $("#importUrl").addEventListener("blur", listTabsFromUrlForImport);
-  $("#btnDoImport").addEventListener("click", doImportFromSheets);
-
-  // Onboarding
-  $("#btnHelp").addEventListener("click", ()=>openModal(askModal));
-  $("#fabHelp").addEventListener("click", ()=>openModal(askModal));
-  $("#btnAskYes").addEventListener("click", ()=>{ try{localStorage.setItem(onboardingKey(),'1');}catch(_){ } closeModal(); });
-  $("#btnAskNo").addEventListener("click", ()=>{ tutIndex=0; renderTut(); openModal(tutModal); });
-  $("#btnTutPrev").addEventListener("click", ()=>{ if(tutIndex>0){ tutIndex--; renderTut(); } });
-  $("#btnTutNext").addEventListener("click", ()=>{ if(tutIndex<TUTORIAL_STEPS.length-1){ tutIndex++; renderTut(); } });
-  $("#btnTutDone").addEventListener("click", ()=>{ try{ localStorage.setItem(onboardingKey(),'1'); }catch(_){ } closeModal(); });
-
-  // Rascunho local até logar
-  loadHistoryForCurrentUser();
-
-  // Info última base (cosmético)
-  const last = JSON.parse(localStorage.getItem(LS_LAST_BASE) || 'null');
-  if (last) {
-    const when = new Date(last.when || Date.now()).toLocaleString();
-    $("#baseInfo").textContent = `${last.rows} linhas carregadas (última: ${last.name} em ${when})`;
-  }
-
-  // Neighborhood modal
-  $("#btnNeighModal").addEventListener('click', openNeigh);
-  $("#neighQuery").addEventListener('input', debounce(renderNeighList, 120));
-  $("#btnNeighSelectAll").addEventListener('click', ()=>{
-    visibleNeighborhoods($("#neighQuery").value).forEach(k=>NEIGH_SELECTED.add(k));
-    renderNeighList(); renderNeighChips();
-  });
-  $("#btnNeighClear").addEventListener('click', ()=>{
-    NEIGH_SELECTED.clear(); renderNeighList(); renderNeighChips();
-  });
-  $("#btnNeighApply").addEventListener('click', applyNeighSelection);
-
-  // BR modal confirm
-  $("#btnBrConfirm").addEventListener('click', ()=>{
-    const br = ($("#brInput").value||'').trim();
-    if(!br){ showToastCenter({ok:false,title:'BR obrigatório'}); return; }
-    if(!NEIGH_PENDING_TARGET){ closeModal(); return; }
-    const atTarget = pickRepresentativeAT(NEIGH_PENDING_TARGET.rows);
-    const ok = addSelection({ brs: br, at: atTarget, rota: NEIGH_PENDING_TARGET.cage });
-    if(ok){
-      showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${br} → ${atTarget}`});
-      playAddedSound(); try{navigator.vibrate?.(10);}catch(_){}
-    }else{
-      showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
-    }
-    NEIGH_PENDING_TARGET = null;
-    closeModal();
-  });
-});
-
-/* ===== Tutorial ===== */
-const TUTORIAL_STEPS = [
-  { t:'1) Carregar planilha', h:`Use <b>Arraste ou clique</b> e o botão <b>Carregar planilha</b>. Por padrão usamos a aba <b>Planilha1</b> (ou a primeira). Você também pode usar <b>Ler do Sheets</b> para puxar direto da aba <b>Calculation Tasks (CTs)</b>.` },
-  { t:'2) Buscar um BRS', h:`No campo de busca, <b>bipe</b> ou digite o BRS e pressione Enter. À esquerda aparecem os <b>detalhes</b> (BRS, Rota, Bairro, Veículo, AT) e o <b>endereço</b>.` },
-  { t:'3) Rotas do mesmo bairro', h:`À direita listamos as <b>rotas com o mesmo Neighborhood</b>. Use os filtros por <b>Planned Vehicle Type</b>.` },
-  { t:'4) Adicionar e revisar', h:`No modo <b>Neighborhood</b>, selecione os bairros no <b>modal</b>, aplique e então clique em <b>Adicionar nesta rota</b>. Será aberto um <b>modal para BR</b> — ele pode <b>não estar na base</b> e será aceito.` },
-  { t:'5) Exportar ou Enviar para Sheets', h:`Use <b>Exportar (.xlsx)</b> ou <b>Enviar p/ Sheets</b>. Enviamos <b>somente BR e AT</b> (sem cabeçalho). O histórico de envios fica no final.` },
-  { t:'6) Permissões úteis', h:`Para ler/enviar, sua conta deve ter acesso à planilha. O acesso pode ser restrito a <code>@shopee.com</code> e <code>@shopeemobile-external.com</code>.` }
-];
-let tutIndex = 0;
-function renderTut(){
-  const body = $("#tutBody");
-  const dots = $("#tutDots");
-  const step = TUTORIAL_STEPS[tutIndex];
-  body.innerHTML = `<h3 style="margin-bottom:6px">${step.t}</h3><p>${step.h}</p>`;
-  dots.innerHTML = TUTORIAL_STEPS.map((_,i)=>`<span class="dot ${i===tutIndex?'active':''}"></span>`).join('');
-  $("#btnTutPrev").style.visibility = tutIndex===0?'hidden':'visible';
-  $("#btnTutNext").style.display = tutIndex===TUTORIAL_STEPS.length-1?'none':'inline-block';
-  $("#btnTutDone").style.display = tutIndex===TUTORIAL_STEPS.length-1?'inline-block':'none';
-}
-function maybeShowOnboarding(){
-  try{ if(!localStorage.getItem(onboardingKey())) openModal(askModal); }catch(_){ openModal(askModal); }
-}
-
-/* ========= Drag & Drop ========= */
-(function setupDnd(){
-  const dz = document.getElementById('dropzone');
-  const input = document.getElementById('file');
-  const prevent = e=>{e.preventDefault(); e.stopPropagation();};
-  ['dragenter','dragover','dragleave','drop'].forEach(ev=> dz.addEventListener(ev, prevent));
-  dz.addEventListener('dragenter', ()=> dz.classList.add('dragover'));
-  dz.addEventListener('dragover',  ()=> dz.classList.add('dragover'));
-  dz.addEventListener('dragleave', ()=> dz.classList.remove('dragover'));
-  dz.addEventListener('drop', (e)=>{
-    dz.classList.remove('dragover');
-    const f = e.dataTransfer?.files?.[0];
-    if(f){ input.files = e.dataTransfer.files; handleLoad(f); }
-  });
-  input.addEventListener('change', (e)=>{
-    const f = e.target.files?.[0];
-    if(f) handleLoad(f);
-  });
-})();
 </script>
+
 </body>
 </html>
