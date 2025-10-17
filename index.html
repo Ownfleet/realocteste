@@ -158,7 +158,7 @@
     .chip-x button{all:unset;cursor:pointer;font-weight:900;opacity:.7}
     .chip-x button:hover{opacity:1}
 
-    /* ===== TOAST ===== */
+    /* ===== TOAST CENTRAL ===== */
     .toast-center{
       position:fixed;left:50%;top:50%;
       transform:translate(-50%,-50%) scale(.94);
@@ -198,7 +198,7 @@
     }
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* Detalhes extras */
+    /* ===== Detalhes extras de UI ===== */
     .chipCheck{display:inline-flex;align-items:center;margin:4px 6px 0 0}
     .chipCheck input{display:none}
     .chipCheck .chip{border:1px solid #eee; user-select:none; cursor:pointer}
@@ -206,9 +206,37 @@
     .warn-badge{display:inline-flex;align-items:center;gap:6px;background:#fff7ed;border:1px solid #ffedd5;color:#9a3412;padding:4px 8px;border-radius:999px;font-size:12px}
     code{background:#fff7f4;border:1px solid #ffe2d6;border-radius:6px;padding:1px 6px}
     .dropzone.dragover{border-color:var(--primary); box-shadow:0 0 0 6px rgba(255,87,34,.08)}
+
+    /* ===== Splash de boas-vindas (rápido) ===== */
+    .splash{
+      position:fixed; inset:0; z-index:1400;
+      display:flex; align-items:center; justify-content:center;
+      background:#ffffff;
+    }
+    .splash .box{
+      display:flex; flex-direction:column; align-items:center; gap:10px;
+      padding:22px 26px; border:1px solid var(--line); border-radius:18px;
+      box-shadow:var(--shadow-md); background:#fff;
+      transform:scale(.98); opacity:0; animation:splash-in .25s ease-out forwards;
+    }
+    .splash img{ width:120px; height:120px; object-fit:contain; }
+    .splash .title{ font-weight:900; font-size:18px; letter-spacing:.2px }
+    .splash .sub{ color:var(--muted); font-size:14px; font-weight:700; letter-spacing:.2px }
+    @keyframes splash-in{ to{ opacity:1; transform:scale(1)} }
+    .splash.hide{ animation:splash-out .35s ease-in forwards }
+    @keyframes splash-out{ to{ opacity:0; transform:scale(.985)} }
   </style>
 </head>
 <body>
+
+<!-- Splash rápido de boas-vindas (aparece só na 1ª visita) -->
+<div id="splash" class="splash" aria-hidden="true">
+  <div class="box">
+    <img src="https://media.giphy.com/media/Pj8pBI65xL1mKBBSiM/giphy.gif" alt="Bem-vindo">
+    <div class="title">Bem-vindo(a)!</div>
+    <div class="sub">Realocamento carregando…</div>
+  </div>
+</div>
 
 <!-- Appbar -->
 <div class="appbar">
@@ -482,6 +510,7 @@ const LS_PREFIX = 'spr_realloc_history_';
 const LS_LAST_SHEET = 'spr_realloc_last_sheet_';
 const LS_VEH = 'veh_filter';
 const LS_LAST_BASE = 'last_base_info';
+const SPLASH_KEY = 'spr_welcome_seen_v1';
 
 function storageKey(){ return LS_PREFIX + (currentEmail || 'anon'); }
 function lastSheetKey(){ return LS_LAST_SHEET + (currentEmail || 'anon'); }
@@ -982,12 +1011,358 @@ async function listTabsFromUrl(){
   if(!spreadsheetId){ select.innerHTML = '<option value="">URL inválida</option>'; return; }
   try{
     await ensureAuth();
-    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetsId}`, {
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
-  }catch(_){}
-}
-</script>
+    if(!res.ok){ select.innerHTML = '<option value="">Falha ao listar abas</option>'; return; }
+    const data = await res.json();
+    const sheets = (data.sheets||[]).map(s => s.properties?.title).filter(Boolean);
+    if(!sheets.length){ select.innerHTML = '<option value="">Sem abas visíveis</option>'; return; }
+    select.innerHTML = sheets.map(t => `<option value="${t}">${t}</option>`).join('');
+    select.disabled = false;
 
+    try{
+      const last = JSON.parse(localStorage.getItem(lastSheetKey())||'null');
+      if(last && last.spreadsheetId === spreadsheetId && sheets.includes(last.sheetTitle)){
+        select.value = last.sheetTitle;
+        $("#startCell").value = last.startCell || 'A1';
+      }
+    }catch(_){}
+  }catch(_){
+    select.innerHTML = '<option value="">Erro ao carregar abas</option>';
+  }
+}
+function openSheetsModal(){
+  $("#sheetUrl").value = '';
+  $("#sheetTab").innerHTML = '<option value="">Cole a URL para listar as abas…</option>';
+  $("#sheetTab").disabled = true;
+  $("#startCell").value = 'A1';
+  try{
+    const last = JSON.parse(localStorage.getItem(lastSheetKey())||'null');
+    if(last){
+      $("#sheetUrl").value = last.url || '';
+      if(last.url) listTabsFromUrl();
+    }
+  }catch(_){}
+  openModal(sheetsModal);
+}
+async function doSendToSheets(){
+  if(!SELECTED.length){ showInfo('Envio', 'Nenhuma realocação na tabela.'); return; }
+  const link = $("#sheetUrl").value.trim();
+  if(!link){ showInfo('URL inválida', 'Cole o link completo da planilha do Google.'); return; }
+  const spreadsheetId = parseSpreadsheetId(link);
+  if(!spreadsheetId){ showInfo('URL inválida', 'Precisa ser um link de <b>docs.google.com/spreadsheets</b>.'); return; }
+  await ensureAuth();
+  const sheetTitle = $("#sheetTab").value.trim();
+  const startCell  = $("#startCell").value.trim() || 'A1';
+  if(!sheetTitle){ showInfo('Aba obrigatória', 'Selecione a aba de destino.'); return; }
+  try{
+    localStorage.setItem(lastSheetKey(), JSON.stringify({ url: link, spreadsheetId, sheetTitle, startCell }));
+  }catch(_){}
+  const range = `${sheetTitle}!${startCell}`;
+  const values = SELECTED.map(it=>[it.brs||'', it.at||'']);
+  const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+  try{
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values })
+    });
+    if(!res.ok){ const txt = await res.text(); throw new Error(txt); }
+    closeModal();
+    showToastCenter({ok:true, title:'Enviado!', subtitle:'Dados enviados ao Sheets'});
+  }catch(err){
+    showToastCenter({ok:false, title:'Falha ao enviar'});
+    showInfo('Falha ao enviar', 'Verifique permissões e se a API do Sheets está ativa.<br><small>'+ (err?.message||err) +'</small>');
+  }
+}
+
+/* ========= Ler do Sheets ========= */
+const DEFAULT_CTS_TITLE = "Calculation Tasks (CTs)";
+async function loadFromGoogleSheet(url, tabTitle = DEFAULT_CTS_TITLE){
+  const spreadsheetId = parseSpreadsheetId(url);
+  if(!spreadsheetId){
+    showInfo('URL inválida', 'Cole um link de <b>docs.google.com/spreadsheets</b>.');
+    return;
+  }
+  await ensureAuth();
+  showLoading('Lendo Google Sheets (CTs)…');
+  try{
+    const range = encodeURIComponent(`'${tabTitle}'!A:ZZZ`);
+    const api = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
+    const res = await fetch(api, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if(!res.ok){
+      const msg = await res.text();
+      throw new Error(`Falha ao ler a aba "${tabTitle}".<br><small>${msg}</small>`);
+    }
+    const data = await res.json();
+    const values = Array.isArray(data.values) ? data.values : [];
+    if(values.length < 2){ throw new Error(`A aba <b>${tabTitle}</b> não tem linhas suficientes (precisa de cabeçalho + dados).`); }
+    const header = values[0].map(h => String(h||'').trim());
+    const rowsObj = values.slice(1).map(row => {
+      const o = {};
+      for(let i=0;i<header.length;i++){
+        const key = header[i] || `Col_${i+1}`;
+        o[key] = (row[i] !== undefined && row[i] !== null) ? String(row[i]) : '';
+      }
+      return o;
+    });
+    BASE_ROWS = rowsObj.map(normalizeFromExt).filter(r=>r.brs || r.bairro);
+    buildIndexes();
+    rebuildVehicleFilterFromBase();
+
+    $("#baseInfo").textContent = `${BASE_ROWS.length} linhas carregadas (Google Sheets)`;
+    $("#sheetInfo").textContent = `Aba usada: ${tabTitle}`;
+    $("#scan").disabled = false; $("#btnScan").disabled = false; $("#btnNeighModal").disabled = false;
+    $("#scanMsg").innerHTML = '<span class="ok">Base carregada! Já pode bipar ou pesquisar Neighborhood.</span>';
+
+    hideLoading();
+    showToastCenter({ok:true, title:'Pacotes prontos', subtitle:'Lidos do Google Sheets (CTs)'});    
+    focusScan();
+
+    try{
+      localStorage.setItem(LS_LAST_BASE, JSON.stringify({
+        name: `Sheets:${spreadsheetId}/${tabTitle}`,
+        rows: BASE_ROWS.length,
+        when: Date.now()
+      }));
+    }catch(_){}
+  }catch(err){
+    hideLoading();
+    showToastCenter({ok:false, title:'Falha ao ler do Sheets'});
+    showInfo('Falha ao ler do Sheets', err?.message || String(err));
+  }
+}
+async function listTabsFromUrlForImport(){
+  const link = $("#importUrl").value.trim();
+  const select = $("#importTab");
+  select.innerHTML = '<option value="">Carregando abas…</option>'; select.disabled = true;
+  const spreadsheetId = parseSpreadsheetId(link);
+  if(!spreadsheetId){ select.innerHTML = '<option value="">URL inválida</option>'; return; }
+  try{
+    await ensureAuth();
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if(!res.ok){ select.innerHTML = '<option value="">Falha ao listar abas</option>'; return; }
+    const data = await res.json();
+    const sheets = (data.sheets||[]).map(s => s.properties?.title).filter(Boolean);
+    if(!sheets.length){ select.innerHTML = '<option value="">Sem abas visíveis</option>'; return; }
+    select.innerHTML = sheets.map(t => `<option value="${t}">${t}</option>`).join('');
+    select.disabled = false;
+    const preferred = sheets.find(t => t.trim().toLowerCase() === DEFAULT_CTS_TITLE.toLowerCase());
+    select.value = preferred || sheets[0];
+  }catch(_){
+    select.innerHTML = '<option value="">Erro ao carregar abas</option>';
+  }
+}
+function openImportModal(){
+  $("#importUrl").value = '';
+  $("#importTab").innerHTML = '<option value="">Cole a URL para listar as abas…</option>';
+  $("#importTab").disabled = true;
+  openModal(importModal);
+}
+async function doImportFromSheets(){
+  const url = $("#importUrl").value.trim();
+  if(!url){ showInfo('URL inválida', 'Cole a URL do Google Sheets.'); return; }
+  const tab = $("#importTab").value || DEFAULT_CTS_TITLE;
+  closeModal();
+  await loadFromGoogleSheet(url, tab);
+}
+
+/* ========= Ações ========= */
+function handleScan(){
+  const input = $("#scan");
+  const code = input.value.trim();
+  if(!code){ showInfo('Busca', 'Digite/escaneie um <b>BRS</b>.'); return; }
+  if(!INDEX_BRS.size){ showInfo('Base vazia', 'Carregue a planilha primeiro.'); return; }
+
+  const row = INDEX_BRS.get(normBRS(code));
+  if(!row){ showInfo('Não encontrado', 'Código não localizado na base.'); input.value=''; focusScan(); return; }
+
+  const same = findSameNeighborhoodGrouped(row.bairro);
+  LAST_ROW = row; LAST_SAME = same;
+
+  renderResult(row, same);
+  $("#scanMsg").innerHTML = '<span class="ok">Pesquisa concluída.</span>';
+  input.value=''; focusScan();
+}
+function resetBase(){
+  BASE_ROWS = []; INDEX_BRS.clear(); INDEX_BAIRRO_CLUSTER.clear(); INDEX_TOTAL_BY_CAGE.clear();
+  LAST_ROW=null; LAST_SAME=[];
+  $("#baseInfo").textContent = 'nenhuma carregada';
+  $("#sheetInfo").textContent = '';
+  $("#scan").disabled = true; $("#btnScan").disabled = true; $("#btnNeighModal").disabled = true;
+  $("#scan").value='';
+  $("#resultLeft").style.display='none';
+  $("#resultRight").style.display='none';
+  $("#placeholderRight").style.display='block';
+  $("#scanMsg").textContent = 'Carregue a planilha para habilitar a busca.';
+  clearSelections();
+}
+
+/* ========= Neighborhood Modal ========= */
+function allNeighborhoodKeys(){
+  return Array.from(INDEX_BAIRRO_CLUSTER.keys()).sort((a,b)=> a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
+}
+function visibleNeighborhoods(filter){
+  const t = norm(filter||'');
+  const all = allNeighborhoodKeys();
+  if(!t) return all;
+  return all.filter(k => norm(k).includes(t));
+}
+function renderNeighList(){
+  const list = $("#neighList");
+  const filter = $("#neighQuery").value;
+  const items = visibleNeighborhoods(filter);
+  list.innerHTML = `<div class="list-head">Bairros (${items.length})</div>`;
+  if(!items.length){
+    list.innerHTML += `<div class="list-item"><em class="muted">Nenhum bairro encontrado</em></div>`;
+    return;
+  }
+  items.forEach(k=>{
+    const id = 'n_'+k.replace(/\W+/g,'_');
+    const checked = NEIGH_SELECTED.has(k) ? 'checked' : '';
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    row.innerHTML = `<input type="checkbox" id="${id}" ${checked}><label for="${id}" style="flex:1;cursor:pointer">${k}</label>`;
+    row.querySelector('input').addEventListener('change', e=>{
+      if(e.target.checked) NEIGH_SELECTED.add(k); else NEIGH_SELECTED.delete(k);
+      renderNeighChips();
+    });
+    list.appendChild(row);
+  });
+}
+function renderNeighChips(){
+  const wrap = $("#neighChips"); wrap.innerHTML = '';
+  Array.from(NEIGH_SELECTED).sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(k=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip-x';
+    chip.innerHTML = `<span>${k}</span><button title="Remover">×</button>`;
+    chip.querySelector('button').addEventListener('click', ()=>{
+      NEIGH_SELECTED.delete(k);
+      renderNeighChips();
+      renderNeighList();
+    });
+    wrap.appendChild(chip);
+  });
+}
+function openNeigh(){
+  $("#neighQuery").value = '';
+  renderNeighList();
+  renderNeighChips();
+  openModal(neighModal);
+}
+function applyNeighSelection(){
+  const cages = new Map(); // cage -> {cage, rows, bairro}
+  Array.from(NEIGH_SELECTED).forEach(k=>{
+    const mapC = INDEX_BAIRRO_CLUSTER.get(k);
+    if(!mapC) return;
+    for(const [cage, rows] of mapC.entries()){
+      if(!VEH_FILTER.size || VEH_FILTER.has((rows[0]?.veiculo||'').trim())){
+        const cur = cages.get(cage) || { cage, rows: [], bairro: k };
+        cur.rows.push(...rows);
+        cages.set(cage, cur);
+      }
+    }
+  });
+  const groups = Array.from(cages.values());
+  fillSameTable(groups, NEIGH_SELECTED.size === 1 ? Array.from(NEIGH_SELECTED)[0] : '(vários)', true);
+  closeModal();
+}
+
+/* ========= Listeners ========= */
+document.addEventListener('DOMContentLoaded', ()=>{
+  // Splash: mostra só na 1ª visita e some sozinho
+  (function maybeShowSplash(){
+    const el = document.getElementById('splash');
+    if(!el) return;
+    const seen = localStorage.getItem(SPLASH_KEY);
+    if(seen){ el.remove(); return; }
+    setTimeout(()=> el.classList.add('hide'), 1200);
+    setTimeout(()=> { el.remove(); localStorage.setItem(SPLASH_KEY,'1'); }, 1600);
+  })();
+
+  $("#btnLoad").addEventListener("click", ()=>handleLoad());
+  $("#btnScan").addEventListener("click", handleScan);
+  $("#scan").addEventListener("keydown", e=>{ if(e.key === "Enter"){ e.preventDefault(); handleScan(); } });
+  $("#btnReset").addEventListener("click", resetBase);
+
+  $("#btnExport").addEventListener("click", exportSelections);
+  $("#btnClearSel").addEventListener("click", clearSelections);
+  $("#btnCopy").addEventListener("click", copySelections);
+
+  // ENVIAR → modal e ações
+  $("#btnSendSheets").addEventListener("click", openSheetsModal);
+  $("#sheetUrl").addEventListener("change", listTabsFromUrl);
+  $("#sheetUrl").addEventListener("blur", listTabsFromUrl);
+  $("#btnDoSend").addEventListener("click", doSendToSheets);
+
+  // IMPORTAR (LER DO SHEETS)
+  $("#btnLoadSheets").addEventListener("click", openImportModal);
+  $("#importUrl").addEventListener("change", listTabsFromUrlForImport);
+  $("#importUrl").addEventListener("blur", listTabsFromUrlForImport);
+  $("#btnDoImport").addEventListener("click", doImportFromSheets);
+
+  // Rascunho local até logar
+  loadHistoryForCurrentUser();
+
+  // Info última base (cosmético)
+  const last = JSON.parse(localStorage.getItem(LS_LAST_BASE) || 'null');
+  if (last) {
+    const when = new Date(last.when || Date.now()).toLocaleString();
+    $("#baseInfo").textContent = `${last.rows} linhas carregadas (última: ${last.name} em ${when})`;
+  }
+
+  // Neighborhood modal
+  $("#btnNeighModal").addEventListener('click', openNeigh);
+  $("#neighQuery").addEventListener('input', debounce(renderNeighList, 120));
+  $("#btnNeighSelectAll").addEventListener('click', ()=>{
+    visibleNeighborhoods($("#neighQuery").value).forEach(k=>NEIGH_SELECTED.add(k));
+    renderNeighList(); renderNeighChips();
+  });
+  $("#btnNeighClear").addEventListener('click', ()=>{
+    NEIGH_SELECTED.clear(); renderNeighList(); renderNeighChips();
+  });
+  $("#btnNeighApply").addEventListener('click', applyNeighSelection);
+
+  // BR modal confirm
+  $("#btnBrConfirm").addEventListener('click', ()=>{
+    const br = ($("#brInput").value||'').trim();
+    if(!br){ showToastCenter({ok:false,title:'BR obrigatório'}); return; }
+    if(!NEIGH_PENDING_TARGET){ closeModal(); return; }
+    const atTarget = pickRepresentativeAT(NEIGH_PENDING_TARGET.rows);
+    const ok = addSelection({ brs: br, at: atTarget, rota: NEIGH_PENDING_TARGET.cage });
+    if(ok){
+      showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${br} → ${atTarget}`});
+      playAddedSound(); try{navigator.vibrate?.(10);}catch(_){}
+    }else{
+      showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
+    }
+    NEIGH_PENDING_TARGET = null;
+    closeModal();
+  });
+});
+
+/* ========= Drag & Drop ========= */
+(function setupDnd(){
+  const dz = document.getElementById('dropzone');
+  const input = document.getElementById('file');
+  const prevent = e=>{e.preventDefault(); e.stopPropagation();};
+  ['dragenter','dragover','dragleave','drop'].forEach(ev=> dz.addEventListener(ev, prevent));
+  dz.addEventListener('dragenter', ()=> dz.classList.add('dragover'));
+  dz.addEventListener('dragover',  ()=> dz.classList.add('dragover'));
+  dz.addEventListener('dragleave', ()=> dz.classList.remove('dragover'));
+  dz.addEventListener('drop', (e)=>{
+    dz.classList.remove('dragover');
+    const f = e.dataTransfer?.files?.[0];
+    if(f){ input.files = e.dataTransfer.files; handleLoad(f); }
+  });
+  input.addEventListener('change', (e)=>{
+    const f = e.target.files?.[0];
+    if(f) handleLoad(f);
+  });
+})();
+</script>
 </body>
 </html>
