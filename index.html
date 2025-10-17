@@ -207,6 +207,13 @@
     code{background:#fff7f4;border:1px solid #ffe2d6;border-radius:6px;padding:1px 6px}
     .dropzone.dragover{border-color:var(--primary); box-shadow:0 0 0 6px rgba(255,87,34,.08)}
 
+    /* Badge (+n) de adicionados */
+    .chip-add{
+      display:inline-flex;align-items:center;gap:4px;
+      background:#fff3ec;border:1px solid #ffd9c9;color:#b34b1c;
+      padding:2px 8px;border-radius:999px;font-size:12px;font-weight:900;margin-left:6px;
+    }
+
     /* ===== Splash de boas-vindas (rápido) ===== */
     .splash{
       position:fixed; inset:0; z-index:1400;
@@ -512,8 +519,12 @@ const LS_VEH = 'veh_filter';
 const LS_LAST_BASE = 'last_base_info';
 const SPLASH_KEY = 'spr_welcome_seen_v1';
 
+/* NOVO: contadores por rota */
+const LS_ADDED_COUNTS_PREFIX = 'spr_added_counts_';
+
 function storageKey(){ return LS_PREFIX + (currentEmail || 'anon'); }
 function lastSheetKey(){ return LS_LAST_SHEET + (currentEmail || 'anon'); }
+function addedCountsKey(){ return LS_ADDED_COUNTS_PREFIX + (currentEmail || 'anon'); }
 
 /* ====== Utils/UI ====== */
 const $ = s => document.querySelector(s);
@@ -587,6 +598,38 @@ function loadHistoryForCurrentUser(){
   }catch(_){}
 }
 
+/* ====== NOVO: contadores adicionados por rota ====== */
+let ADDED_COUNTS = {}; // { [rota]: number }
+function loadAddedCounts(){
+  try{
+    const raw = localStorage.getItem(addedCountsKey());
+    ADDED_COUNTS = raw ? JSON.parse(raw) : {};
+  }catch(_){ ADDED_COUNTS = {}; }
+}
+function saveAddedCounts(){
+  try{ localStorage.setItem(addedCountsKey(), JSON.stringify(ADDED_COUNTS)); }catch(_){}
+}
+function getAddedCount(cage){
+  return Math.max(0, Number(ADDED_COUNTS[cage] || 0));
+}
+function incAddedCount(cage, n=1){
+  if(!cage) return;
+  ADDED_COUNTS[cage] = getAddedCount(cage) + n;
+  saveAddedCounts();
+  rerenderSame();
+}
+function decAddedCount(cage, n=1){
+  if(!cage) return;
+  ADDED_COUNTS[cage] = Math.max(0, getAddedCount(cage) - n);
+  saveAddedCounts();
+  rerenderSame();
+}
+function clearAddedCounts(){
+  ADDED_COUNTS = {};
+  saveAddedCounts();
+  rerenderSame();
+}
+
 /* ====== OAuth init ====== */
 window.onload = () => {
   if (window.google?.accounts?.oauth2) {
@@ -600,6 +643,7 @@ window.onload = () => {
           if (ENFORCE_SHOPEE) await gatekeepShopee(accessToken);
           currentEmail = await getUserEmail(accessToken);
           loadHistoryForCurrentUser();
+          loadAddedCounts();
         }catch(e){
           showInfo('Acesso negado', e.message || e);
           google.accounts.oauth2.revoke(accessToken);
@@ -627,6 +671,7 @@ async function ensureAuth(){
         if (ENFORCE_SHOPEE) await gatekeepShopee(accessToken);
         currentEmail = await getUserEmail(accessToken);
         loadHistoryForCurrentUser();
+        loadAddedCounts();
         resolve(true);
       } catch (e) {
         google.accounts.oauth2.revoke(accessToken);
@@ -867,12 +912,15 @@ function fillSameTable(groups, bairroLabel, neighMode){
       statusHtml = `<span class="ok" title="Quantidade no bairro">${qtdNoBairro}</span>`;
     }
 
+    const added = getAddedCount(g.cage);
+    const addedHtml = added ? `<span class="chip-add">+${added}</span>` : '';
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><span class="chip">${g.cage}</span></td>
       <td>${bairroShown}</td>
       <td>${veiculo}</td>
-      <td>${totalCage}</td>
+      <td>${totalCage} ${addedHtml}</td>
       <td>${statusHtml}</td>
       <td><button class="btn small" data-cage="${g.cage}">Adicionar nesta rota</button></td>
     `;
@@ -890,6 +938,7 @@ function fillSameTable(groups, bairroLabel, neighMode){
         if(ok){
           showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${LAST_ROW.brs} → ${atTarget}`});
           playAddedSound(); try{navigator.vibrate?.(10);}catch(_){}
+          incAddedCount(g.cage);
         }else{
           showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
         }
@@ -940,6 +989,7 @@ function renderSelections(){
       <td><button class="btn small ghost danger" title="Remover">✕</button></td>
     `;
     tr.querySelector('button').addEventListener('click', ()=>{
+      decAddedCount(it.rota);
       SELECTED.splice(idx,1);
       saveHistory();
       renderSelections();
@@ -960,6 +1010,9 @@ function addSelection({brs, at, rota}){
   return true;
 }
 function clearSelections(){
+  const perRota = {};
+  SELECTED.forEach(it => { perRota[it.rota] = (perRota[it.rota]||0)+1; });
+  Object.keys(perRota).forEach(r => decAddedCount(r, perRota[r]));
   SELECTED = [];
   try{ localStorage.removeItem(storageKey()); }catch(_){}
   renderSelections();
@@ -1061,6 +1114,7 @@ async function doSendToSheets(){
   }catch(_){}
   const range = `${sheetTitle}!${startCell}`;
   const values = SELECTED.map(it=>[it.brs||'', it.at||'']);
+  // >>> CORREÇÃO AQUI: nome correto da variável `spreadsheetId`
   const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
   try{
     const res = await fetch(apiUrl, {
@@ -1199,6 +1253,7 @@ function resetBase(){
   $("#placeholderRight").style.display='block';
   $("#scanMsg").textContent = 'Carregue a planilha para habilitar a busca.';
   clearSelections();
+  clearAddedCounts();
 }
 
 /* ========= Neighborhood Modal ========= */
@@ -1306,6 +1361,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   // Rascunho local até logar
   loadHistoryForCurrentUser();
+  loadAddedCounts();
 
   // Info última base (cosmético)
   const last = JSON.parse(localStorage.getItem(LS_LAST_BASE) || 'null');
@@ -1336,6 +1392,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(ok){
       showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${br} → ${atTarget}`});
       playAddedSound(); try{navigator.vibrate?.(10);}catch(_){}
+      incAddedCount(NEIGH_PENDING_TARGET.cage);
     }else{
       showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
     }
