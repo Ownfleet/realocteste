@@ -230,7 +230,7 @@
       transform:scale(.98); opacity:0; animation:splash-in .25s ease-out forwards;
     }
     .splash img{ width:120px; height:120px; object-fit:contain; }
-    .splash .title{ font-weight:900; font-size:18px; letter-spacing:.2px }
+    .splash .title{ font-size:18px; letter-spacing:.2px }
     .splash .sub{ color:var(--muted); font-size:14px; font-weight:700; letter-spacing:.2px }
     @keyframes splash-in{ to{ opacity:1; transform:scale(1)} }
     .splash.hide{ animation:splash-out .35s ease-in forwards }
@@ -938,7 +938,6 @@ function fillSameTable(groups, bairroLabel, neighMode){
           showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${LAST_ROW.brs} → ${atTarget}`});
           playAddedSound(); try{navigator.vibrate?.(10);}catch(_){}
           incAddedCount(g.cage);
-          // === NOVO: gera e imprime QR da ROTA (ex.: g-27)
           imprimirQRDaRota(g.cage);
         }else{
           showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
@@ -1139,6 +1138,63 @@ async function doSendToSheets(){
   }
 }
 
+/* ======== Ler do Sheets (CTs) ======== */
+const DEFAULT_CTS_TITLE = "Calculation Tasks (CTs)";
+async function loadFromGoogleSheet(url, tabTitle = DEFAULT_CTS_TITLE){
+  const spreadsheetId = parseSpreadsheetId(url);
+  if(!spreadsheetId){
+    showInfo('URL inválida', 'Cole um link de <b>docs.google.com/spreadsheets</b>.');
+    return;
+  }
+  await ensureAuth();
+  showLoading('Lendo Google Sheets (CTs)…');
+  try{
+    const range = encodeURIComponent(`'${tabTitle}'!A:ZZZ`);
+    const api = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
+    const res = await fetch(api, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if(!res.ok){
+      const msg = await res.text();
+      throw new Error(`Falha ao ler a aba "${tabTitle}".<br><small>${msg}</small>`);
+    }
+    const data = await res.json();
+    const values = Array.isArray(data.values) ? data.values : [];
+    if(values.length < 2){ throw new Error(`A aba <b>${tabTitle}</b> não tem linhas suficientes (precisa de cabeçalho + dados).`); }
+    const header = values[0].map(h => String(h||'').trim());
+    const rowsObj = values.slice(1).map(row => {
+      const o = {};
+      for(let i=0;i<header.length;i++){
+        const key = header[i] || `Col_${i+1}`;
+        o[key] = (row[i] !== undefined && row[i] !== null) ? String(row[i]) : '';
+      }
+      return o;
+    });
+    BASE_ROWS = rowsObj.map(normalizeFromExt).filter(r=>r.brs || r.bairro);
+    buildIndexes();
+    rebuildVehicleFilterFromBase();
+
+    $("#baseInfo").textContent = `${BASE_ROWS.length} linhas carregadas (Google Sheets)`;
+    $("#sheetInfo").textContent = `Aba usada: ${tabTitle}`;
+    $("#scan").disabled = false; $("#btnScan").disabled = false; $("#btnNeighModal").disabled = false;
+    $("#scanMsg").innerHTML = '<span class="ok">Base carregada! Já pode bipar ou pesquisar Neighborhood.</span>';
+
+    hideLoading();
+    showToastCenter({ok:true, title:'Pacotes prontos', subtitle:'Lidos do Google Sheets (CTs)'});    
+    focusScan();
+
+    try{
+      localStorage.setItem(LS_LAST_BASE, JSON.stringify({
+        name: `Sheets:${spreadsheetId}/${tabTitle}`,
+        rows: BASE_ROWS.length,
+        when: Date.now()
+      }));
+    }catch(_){}
+  }catch(err){
+    hideLoading();
+    showToastCenter({ok:false, title:'Falha ao ler do Sheets'});
+    showInfo('Falha ao ler do Sheets', err?.message || String(err));
+  }
+}
+
 /* ========= Ações ========= */
 function handleScan(){
   const input = $("#scan");
@@ -1242,34 +1298,27 @@ function applyNeighSelection(){
 }
 
 /* ========= QR / Impressão (ROTA) ========= */
-/** Gera e imprime o QR da ROTA (ex.: "g-27") em etiqueta A7/80mm. Funciona nas Elgin via diálogo do navegador. */
 function imprimirQRDaRota(rota){
   try{
     const rotaStr = String(rota||'').trim();
     if(!rotaStr){ showToastCenter({ok:false, title:'Rota inválida'}); return; }
 
-    // Limpa QR anterior
     const qrWrap = document.getElementById('printQR');
     qrWrap.innerHTML = '';
 
-    // Título e meta
     document.getElementById('printTitle').textContent = `ROTA: ${rotaStr.toUpperCase()}`;
     const now = new Date();
     document.getElementById('printMeta').textContent =
       `Gerado em ${now.toLocaleDateString()} ${now.toLocaleTimeString()} • SPR`;
 
-    // Gera QR (tamanho 180px = bom para 80mm)
-    const qr = new QRCode(qrWrap, {
+    new QRCode(qrWrap, {
       text: rotaStr,
       width: 180,
       height: 180,
       correctLevel: QRCode.CorrectLevel.M
     });
 
-    // Aguarda canvas do QR ser desenhado (sincrono na lib; por segurança dá um tick)
-    setTimeout(()=>{
-      window.print();
-    }, 50);
+    setTimeout(()=>{ window.print(); }, 50);
   }catch(e){
     showToastCenter({ok:false, title:'Falha ao imprimir', subtitle:e?.message||String(e)});
   }
@@ -1302,8 +1351,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
   $("#sheetUrl").addEventListener("blur", listTabsFromUrl);
   $("#btnDoSend").addEventListener("click", doSendToSheets);
 
-  // IMPORTAR (LER DO SHEETS)
-  $("#btnLoadSheets").addEventListener("click", ()=> showInfo('Como usar', 'Cole a URL do Google Sheets no modal de envio. (A leitura direta dos CTs pode ser adicionada aqui se desejar.)'));
+  // LER DO SHEETS (CTs) → pede URL e lê a aba "Calculation Tasks (CTs)"
+  $("#btnLoadSheets").addEventListener("click", async ()=>{
+    const url = prompt('Cole a URL do Google Sheets (Romaneio do dia):');
+    if(!url) return;
+    await loadFromGoogleSheet(url, DEFAULT_CTS_TITLE);
+  });
 
   // Rascunho local até logar
   loadHistoryForCurrentUser();
