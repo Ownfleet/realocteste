@@ -12,6 +12,9 @@
   <!-- Google Identity Services (OAuth popup) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
+  <!-- QR Code (para imprimir rota, ex.: g-27) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
   <style>
     :root{
       /* Paleta Shopee */
@@ -232,6 +235,22 @@
     @keyframes splash-in{ to{ opacity:1; transform:scale(1)} }
     .splash.hide{ animation:splash-out .35s ease-in forwards }
     @keyframes splash-out{ to{ opacity:0; transform:scale(.985)} }
+
+    /* ===== Área de impressão ===== */
+    #printArea{ position:fixed; left:-99999px; top:0; width:320px; padding:12px; }
+    #printCard{
+      width: 300px; padding:10px; border:1px dashed #ddd; border-radius:12px; background:#fff;
+      text-align:center; font-family: Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    #printCard h2{ font-size:18px; margin:6px 0 8px; letter-spacing:.2px }
+    #printCard .meta{ font-size:12px; color:#555; margin-top:4px }
+    #printQR{ display:inline-block; margin:10px auto; }
+    @media print{
+      body *{ visibility: hidden !important; }
+      #printArea, #printArea *{ visibility: visible !important; }
+      #printArea{ position:static; width:auto; }
+      #printCard{ border:0; width:auto; }
+    }
   </style>
 </head>
 <body>
@@ -360,7 +379,7 @@
             <th>BR &amp; Protocolo</th>
             <th>AT &amp; Protocolo</th>
             <th>Rota</th>
-            <th></th>
+            <th style="width:180px">Ações</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -472,33 +491,14 @@
       <button class="btn" id="btnDoSend">Enviar</button>
     </footer>
   </div>
+</div>
 
-  <!-- sheets import modal (LER DO SHEETS) -->
-  <div id="importModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="importTitle">
-    <header id="importTitle">Ler base do Google Sheets</header>
-    <div class="content">
-      <div class="field">
-        <label for="importUrl"><b>Insira aqui o link do Romaneio do dia feito pela roteirização</b></label>
-        <input id="importUrl" placeholder="Cole aqui o link completo da planilha">
-      </div>
-
-      <div class="row" style="margin-top:8px">
-        <div class="field">
-          <label for="importTab"><b>Aba para leitura</b> (padrão: <code>Calculation Tasks (CTs)</code>)</label>
-          <select id="importTab" disabled>
-            <option value="">Cole a URL para listar as abas…</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>&nbsp;</label>
-          <div class="muted" id="importHint">Lemos todas as colunas existentes (A:ZZZ) e normalizamos como no Excel.</div>
-        </div>
-      </div>
-    </div>
-    <footer>
-      <button class="btn cancel" onclick="closeModal()">Cancelar</button>
-      <button class="btn" id="btnDoImport">Carregar</button>
-    </footer>
+<!-- Área de impressão (QR da Rota) -->
+<div id="printArea" aria-hidden="true">
+  <div id="printCard">
+    <h2 id="printTitle">ROTA</h2>
+    <div id="printQR"></div>
+    <div class="meta" id="printMeta"></div>
   </div>
 </div>
 
@@ -572,13 +572,12 @@ function playErrorSound(){
 const overlay = $("#overlay");
 const infoModal = $("#infoModal");
 const sheetsModal = $("#sheetsModal");
-const importModal = $("#importModal");
 const neighModal = $("#neighModal");
 const brModal = $("#brModal");
 
 function openModal(which){
   overlay.style.display = 'flex';
-  [infoModal, sheetsModal, importModal, neighModal, brModal].forEach(x=>x.classList.add('hidden'));
+  [infoModal, sheetsModal, neighModal, brModal].forEach(x=>x.classList.add('hidden'));
   which.classList.remove('hidden');
 }
 function closeModal(){ overlay.style.display = 'none'; }
@@ -939,6 +938,8 @@ function fillSameTable(groups, bairroLabel, neighMode){
           showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${LAST_ROW.brs} → ${atTarget}`});
           playAddedSound(); try{navigator.vibrate?.(10);}catch(_){}
           incAddedCount(g.cage);
+          // === NOVO: gera e imprime QR da ROTA (ex.: g-27)
+          imprimirQRDaRota(g.cage);
         }else{
           showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
         }
@@ -986,13 +987,21 @@ function renderSelections(){
       <td class="mono">${it.brs||'—'}</td>
       <td class="mono">${it.at||'—'}</td>
       <td>${it.rota||'—'}</td>
-      <td><button class="btn small ghost danger" title="Remover">✕</button></td>
+      <td>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn small ghost" data-action="print" title="Imprimir QR da Rota">Imprimir QR</button>
+          <button class="btn small ghost danger" data-action="remove" title="Remover">✕</button>
+        </div>
+      </td>
     `;
-    tr.querySelector('button').addEventListener('click', ()=>{
+    tr.querySelector('[data-action="remove"]').addEventListener('click', ()=>{
       decAddedCount(it.rota);
       SELECTED.splice(idx,1);
       saveHistory();
       renderSelections();
+    });
+    tr.querySelector('[data-action="print"]').addEventListener('click', ()=>{
+      if(it.rota) imprimirQRDaRota(it.rota);
     });
     tbody.appendChild(tr);
   });
@@ -1114,7 +1123,6 @@ async function doSendToSheets(){
   }catch(_){}
   const range = `${sheetTitle}!${startCell}`;
   const values = SELECTED.map(it=>[it.brs||'', it.at||'']);
-  // >>> CORREÇÃO AQUI: nome correto da variável `spreadsheetId`
   const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
   try{
     const res = await fetch(apiUrl, {
@@ -1129,99 +1137,6 @@ async function doSendToSheets(){
     showToastCenter({ok:false, title:'Falha ao enviar'});
     showInfo('Falha ao enviar', 'Verifique permissões e se a API do Sheets está ativa.<br><small>'+ (err?.message||err) +'</small>');
   }
-}
-
-/* ========= Ler do Sheets ========= */
-const DEFAULT_CTS_TITLE = "Calculation Tasks (CTs)";
-async function loadFromGoogleSheet(url, tabTitle = DEFAULT_CTS_TITLE){
-  const spreadsheetId = parseSpreadsheetId(url);
-  if(!spreadsheetId){
-    showInfo('URL inválida', 'Cole um link de <b>docs.google.com/spreadsheets</b>.');
-    return;
-  }
-  await ensureAuth();
-  showLoading('Lendo Google Sheets (CTs)…');
-  try{
-    const range = encodeURIComponent(`'${tabTitle}'!A:ZZZ`);
-    const api = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`;
-    const res = await fetch(api, { headers: { Authorization: `Bearer ${accessToken}` } });
-    if(!res.ok){
-      const msg = await res.text();
-      throw new Error(`Falha ao ler a aba "${tabTitle}".<br><small>${msg}</small>`);
-    }
-    const data = await res.json();
-    const values = Array.isArray(data.values) ? data.values : [];
-    if(values.length < 2){ throw new Error(`A aba <b>${tabTitle}</b> não tem linhas suficientes (precisa de cabeçalho + dados).`); }
-    const header = values[0].map(h => String(h||'').trim());
-    const rowsObj = values.slice(1).map(row => {
-      const o = {};
-      for(let i=0;i<header.length;i++){
-        const key = header[i] || `Col_${i+1}`;
-        o[key] = (row[i] !== undefined && row[i] !== null) ? String(row[i]) : '';
-      }
-      return o;
-    });
-    BASE_ROWS = rowsObj.map(normalizeFromExt).filter(r=>r.brs || r.bairro);
-    buildIndexes();
-    rebuildVehicleFilterFromBase();
-
-    $("#baseInfo").textContent = `${BASE_ROWS.length} linhas carregadas (Google Sheets)`;
-    $("#sheetInfo").textContent = `Aba usada: ${tabTitle}`;
-    $("#scan").disabled = false; $("#btnScan").disabled = false; $("#btnNeighModal").disabled = false;
-    $("#scanMsg").innerHTML = '<span class="ok">Base carregada! Já pode bipar ou pesquisar Neighborhood.</span>';
-
-    hideLoading();
-    showToastCenter({ok:true, title:'Pacotes prontos', subtitle:'Lidos do Google Sheets (CTs)'});    
-    focusScan();
-
-    try{
-      localStorage.setItem(LS_LAST_BASE, JSON.stringify({
-        name: `Sheets:${spreadsheetId}/${tabTitle}`,
-        rows: BASE_ROWS.length,
-        when: Date.now()
-      }));
-    }catch(_){}
-  }catch(err){
-    hideLoading();
-    showToastCenter({ok:false, title:'Falha ao ler do Sheets'});
-    showInfo('Falha ao ler do Sheets', err?.message || String(err));
-  }
-}
-async function listTabsFromUrlForImport(){
-  const link = $("#importUrl").value.trim();
-  const select = $("#importTab");
-  select.innerHTML = '<option value="">Carregando abas…</option>'; select.disabled = true;
-  const spreadsheetId = parseSpreadsheetId(link);
-  if(!spreadsheetId){ select.innerHTML = '<option value="">URL inválida</option>'; return; }
-  try{
-    await ensureAuth();
-    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    if(!res.ok){ select.innerHTML = '<option value="">Falha ao listar abas</option>'; return; }
-    const data = await res.json();
-    const sheets = (data.sheets||[]).map(s => s.properties?.title).filter(Boolean);
-    if(!sheets.length){ select.innerHTML = '<option value="">Sem abas visíveis</option>'; return; }
-    select.innerHTML = sheets.map(t => `<option value="${t}">${t}</option>`).join('');
-    select.disabled = false;
-    const preferred = sheets.find(t => t.trim().toLowerCase() === DEFAULT_CTS_TITLE.toLowerCase());
-    select.value = preferred || sheets[0];
-  }catch(_){
-    select.innerHTML = '<option value="">Erro ao carregar abas</option>';
-  }
-}
-function openImportModal(){
-  $("#importUrl").value = '';
-  $("#importTab").innerHTML = '<option value="">Cole a URL para listar as abas…</option>';
-  $("#importTab").disabled = true;
-  openModal(importModal);
-}
-async function doImportFromSheets(){
-  const url = $("#importUrl").value.trim();
-  if(!url){ showInfo('URL inválida', 'Cole a URL do Google Sheets.'); return; }
-  const tab = $("#importTab").value || DEFAULT_CTS_TITLE;
-  closeModal();
-  await loadFromGoogleSheet(url, tab);
 }
 
 /* ========= Ações ========= */
@@ -1256,7 +1171,7 @@ function resetBase(){
   clearAddedCounts();
 }
 
-/* ========= Neighborhood Modal ========= */
+/* ========= Neighborhood ========= */
 function allNeighborhoodKeys(){
   return Array.from(INDEX_BAIRRO_CLUSTER.keys()).sort((a,b)=> a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
 }
@@ -1326,6 +1241,40 @@ function applyNeighSelection(){
   closeModal();
 }
 
+/* ========= QR / Impressão (ROTA) ========= */
+/** Gera e imprime o QR da ROTA (ex.: "g-27") em etiqueta A7/80mm. Funciona nas Elgin via diálogo do navegador. */
+function imprimirQRDaRota(rota){
+  try{
+    const rotaStr = String(rota||'').trim();
+    if(!rotaStr){ showToastCenter({ok:false, title:'Rota inválida'}); return; }
+
+    // Limpa QR anterior
+    const qrWrap = document.getElementById('printQR');
+    qrWrap.innerHTML = '';
+
+    // Título e meta
+    document.getElementById('printTitle').textContent = `ROTA: ${rotaStr.toUpperCase()}`;
+    const now = new Date();
+    document.getElementById('printMeta').textContent =
+      `Gerado em ${now.toLocaleDateString()} ${now.toLocaleTimeString()} • SPR`;
+
+    // Gera QR (tamanho 180px = bom para 80mm)
+    const qr = new QRCode(qrWrap, {
+      text: rotaStr,
+      width: 180,
+      height: 180,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+
+    // Aguarda canvas do QR ser desenhado (sincrono na lib; por segurança dá um tick)
+    setTimeout(()=>{
+      window.print();
+    }, 50);
+  }catch(e){
+    showToastCenter({ok:false, title:'Falha ao imprimir', subtitle:e?.message||String(e)});
+  }
+}
+
 /* ========= Listeners ========= */
 document.addEventListener('DOMContentLoaded', ()=>{
   // Splash: mostra só na 1ª visita e some sozinho
@@ -1354,10 +1303,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   $("#btnDoSend").addEventListener("click", doSendToSheets);
 
   // IMPORTAR (LER DO SHEETS)
-  $("#btnLoadSheets").addEventListener("click", openImportModal);
-  $("#importUrl").addEventListener("change", listTabsFromUrlForImport);
-  $("#importUrl").addEventListener("blur", listTabsFromUrlForImport);
-  $("#btnDoImport").addEventListener("click", doImportFromSheets);
+  $("#btnLoadSheets").addEventListener("click", ()=> showInfo('Como usar', 'Cole a URL do Google Sheets no modal de envio. (A leitura direta dos CTs pode ser adicionada aqui se desejar.)'));
 
   // Rascunho local até logar
   loadHistoryForCurrentUser();
@@ -1382,7 +1328,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
   $("#btnNeighApply").addEventListener('click', applyNeighSelection);
 
-  // BR modal confirm
+  // BR modal confirm (modo Neighborhood → adiciona e já imprime QR da ROTA)
   $("#btnBrConfirm").addEventListener('click', ()=>{
     const br = ($("#brInput").value||'').trim();
     if(!br){ showToastCenter({ok:false,title:'BR obrigatório'}); return; }
@@ -1393,33 +1339,34 @@ document.addEventListener('DOMContentLoaded', ()=>{
       showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${br} → ${atTarget}`});
       playAddedSound(); try{navigator.vibrate?.(10);}catch(_){}
       incAddedCount(NEIGH_PENDING_TARGET.cage);
+      imprimirQRDaRota(NEIGH_PENDING_TARGET.cage);
     }else{
       showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
     }
     NEIGH_PENDING_TARGET = null;
     closeModal();
   });
-});
 
-/* ========= Drag & Drop ========= */
-(function setupDnd(){
-  const dz = document.getElementById('dropzone');
-  const input = document.getElementById('file');
-  const prevent = e=>{e.preventDefault(); e.stopPropagation();};
-  ['dragenter','dragover','dragleave','drop'].forEach(ev=> dz.addEventListener(ev, prevent));
-  dz.addEventListener('dragenter', ()=> dz.classList.add('dragover'));
-  dz.addEventListener('dragover',  ()=> dz.classList.add('dragover'));
-  dz.addEventListener('dragleave', ()=> dz.classList.remove('dragover'));
-  dz.addEventListener('drop', (e)=>{
-    dz.classList.remove('dragover');
-    const f = e.dataTransfer?.files?.[0];
-    if(f){ input.files = e.dataTransfer.files; handleLoad(f); }
-  });
-  input.addEventListener('change', (e)=>{
-    const f = e.target.files?.[0];
-    if(f) handleLoad(f);
-  });
-})();
+  /* ========= Drag & Drop ========= */
+  (function setupDnd(){
+    const dz = document.getElementById('dropzone');
+    const input = document.getElementById('file');
+    const prevent = e=>{e.preventDefault(); e.stopPropagation();};
+    ['dragenter','dragover','dragleave','drop'].forEach(ev=> dz.addEventListener(ev, prevent));
+    dz.addEventListener('dragenter', ()=> dz.classList.add('dragover'));
+    dz.addEventListener('dragover',  ()=> dz.classList.add('dragover'));
+    dz.addEventListener('dragleave', ()=> dz.classList.remove('dragover'));
+    dz.addEventListener('drop', (e)=>{
+      dz.classList.remove('dragover');
+      const f = e.dataTransfer?.files?.[0];
+      if(f){ input.files = e.dataTransfer.files; handleLoad(f); }
+    });
+    input.addEventListener('change', (e)=>{
+      const f = e.target.files?.[0];
+      if(f) handleLoad(f);
+    });
+  })();
+});
 </script>
 </body>
 </html>
