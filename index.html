@@ -12,9 +12,6 @@
   <!-- Google Identity Services (OAuth popup) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-  <!-- QR Code (para imprimir rota, ex.: g-27) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
   <style>
     :root{
       /* Paleta Shopee */
@@ -151,7 +148,7 @@
     .modal footer{display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #eee;padding:12px}
     .hidden{display:none}
 
-    /* Neighborhood modal list */
+    /* Neighborhood / Address modal list */
     .listbox{border:1px solid var(--line);border-radius:12px;max-height:360px;overflow:auto;background:#fff}
     .list-head{position:sticky;top:0;background:#fafafa;border-bottom:1px solid var(--line);padding:8px 12px;font-weight:900;color:#444}
     .list-item{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid #f3f4f6;cursor:pointer}
@@ -230,27 +227,11 @@
       transform:scale(.98); opacity:0; animation:splash-in .25s ease-out forwards;
     }
     .splash img{ width:120px; height:120px; object-fit:contain; }
-    .splash .title{ font-size:18px; letter-spacing:.2px }
+    .splash .title{ font-weight:900; font-size:18px; letter-spacing:.2px }
     .splash .sub{ color:var(--muted); font-size:14px; font-weight:700; letter-spacing:.2px }
     @keyframes splash-in{ to{ opacity:1; transform:scale(1)} }
     .splash.hide{ animation:splash-out .35s ease-in forwards }
     @keyframes splash-out{ to{ opacity:0; transform:scale(.985)} }
-
-    /* ===== Área de impressão ===== */
-    #printArea{ position:fixed; left:-99999px; top:0; width:320px; padding:12px; }
-    #printCard{
-      width: 300px; padding:10px; border:1px dashed #ddd; border-radius:12px; background:#fff;
-      text-align:center; font-family: Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial;
-    }
-    #printCard h2{ font-size:18px; margin:6px 0 8px; letter-spacing:.2px }
-    #printCard .meta{ font-size:12px; color:#555; margin-top:4px }
-    #printQR{ display:inline-block; margin:10px auto; }
-    @media print{
-      body *{ visibility: hidden !important; }
-      #printArea, #printArea *{ visibility: visible !important; }
-      #printArea{ position:static; width:auto; }
-      #printCard{ border:0; width:auto; }
-    }
   </style>
 </head>
 <body>
@@ -303,6 +284,7 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn" id="btnScan" disabled>Bipar</button>
           <button class="btn secondary" id="btnNeighModal" disabled>Pesquisar por Neighborhood</button>
+          <button class="btn secondary" id="btnAddrModal" disabled>Pesquisar por Endereço</button>
         </div>
       </div>
       <div id="scanMsg" class="muted" style="margin-top:6px">Carregue a planilha para habilitar a busca.</div>
@@ -356,7 +338,7 @@
         </div>
       </div>
 
-      <div id="placeholderRight" class="muted">Bipe um BRS ou use a pesquisa por Neighborhood para listar as rotas.</div>
+      <div id="placeholderRight" class="muted">Bipe um BRS ou use a pesquisa por Neighborhood ou Endereço para listar as rotas.</div>
     </aside>
   </div>
 
@@ -379,7 +361,7 @@
             <th>BR &amp; Protocolo</th>
             <th>AT &amp; Protocolo</th>
             <th>Rota</th>
-            <th style="width:180px">Ações</th>
+            <th></th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -444,7 +426,37 @@
     </footer>
   </div>
 
-  <!-- Modal: Inserir BR (para modo Neighborhood) -->
+  <!-- Modal: Pesquisa por Destination Address (MULTI) -->
+  <div id="addrModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="addrTitle">
+    <header id="addrTitle">Pesquisar por Endereço</header>
+    <div class="content">
+      <div class="row">
+        <div class="field">
+          <label><b>Buscar</b></label>
+          <input id="addrQuery" placeholder="Digite para filtrar os endereços" autocomplete="off">
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <button class="btn small ghost" id="btnAddrSelectAll" title="Selecionar todos visíveis">Selecionar todos</button>
+          <button class="btn small ghost" id="btnAddrClear">Limpar</button>
+        </div>
+      </div>
+
+      <div class="listbox" id="addrList" style="margin-top:8px">
+        <div class="list-head">Endereços</div>
+      </div>
+
+      <div style="margin-top:8px">
+        <div class="label-strong">Selecionados</div>
+        <div id="addrChips" class="chips"></div>
+      </div>
+    </div>
+    <footer>
+      <button class="btn cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn" id="btnAddrApply">Aplicar</button>
+    </footer>
+  </div>
+
+  <!-- Modal: Inserir BR (para modo Neighborhood/Endereço) -->
   <div id="brModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="brTitle">
     <header id="brTitle">Adicionar BR para a rota</header>
     <div class="content">
@@ -491,14 +503,33 @@
       <button class="btn" id="btnDoSend">Enviar</button>
     </footer>
   </div>
-</div>
 
-<!-- Área de impressão (QR da Rota) -->
-<div id="printArea" aria-hidden="true">
-  <div id="printCard">
-    <h2 id="printTitle">ROTA</h2>
-    <div id="printQR"></div>
-    <div class="meta" id="printMeta"></div>
+  <!-- sheets import modal (LER DO SHEETS) -->
+  <div id="importModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <header id="importTitle">Ler base do Google Sheets</header>
+    <div class="content">
+      <div class="field">
+        <label for="importUrl"><b>Insira aqui o link do Romaneio do dia feito pela roteirização</b></label>
+        <input id="importUrl" placeholder="Cole aqui o link completo da planilha">
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div class="field">
+          <label for="importTab"><b>Aba para leitura</b> (padrão: <code>Calculation Tasks (CTs)</code>)</label>
+          <select id="importTab" disabled>
+            <option value="">Cole a URL para listar as abas…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <div class="muted" id="importHint">Lemos todas as colunas existentes (A:ZZZ) e normalizamos como no Excel.</div>
+        </div>
+      </div>
+    </div>
+    <footer>
+      <button class="btn cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn" id="btnDoImport">Carregar</button>
+    </footer>
   </div>
 </div>
 
@@ -572,12 +603,14 @@ function playErrorSound(){
 const overlay = $("#overlay");
 const infoModal = $("#infoModal");
 const sheetsModal = $("#sheetsModal");
+const importModal = $("#importModal");
 const neighModal = $("#neighModal");
+const addrModal  = $("#addrModal");
 const brModal = $("#brModal");
 
 function openModal(which){
   overlay.style.display = 'flex';
-  [infoModal, sheetsModal, neighModal, brModal].forEach(x=>x.classList.add('hidden'));
+  [infoModal, sheetsModal, importModal, neighModal, addrModal, brModal].forEach(x=>x.classList.add('hidden'));
   which.classList.remove('hidden');
 }
 function closeModal(){ overlay.style.display = 'none'; }
@@ -732,6 +765,7 @@ function pick(row, names){
 let BASE_ROWS = [];
 let INDEX_BRS = new Map();
 let INDEX_BAIRRO_CLUSTER = new Map(); // key(bairro sem acento) -> Map(cage -> rows[])
+let INDEX_ADDRESS_CLUSTER = new Map(); // key(endereço sem acento) -> {endereco, bairro, cages: Map(cage -> rows[])}
 let INDEX_TOTAL_BY_CAGE = new Map();
 let VEH_TYPES = [];
 let VEH_FILTER = new Set();
@@ -741,6 +775,9 @@ let LAST_SAME = [];
 /* Neighborhood modal state */
 let NEIGH_SELECTED = new Set();
 let NEIGH_PENDING_TARGET = null; // {cage, rows} para modal de BR
+
+/* Address modal state */
+let ADDR_SELECTED = new Set();
 
 /* ========= Excel ========= */
 function parseSheetToObjects(ws){
@@ -775,10 +812,15 @@ function normalizeFromExt(row){
 
 /* ========= Índices ========= */
 function buildIndexes(){
-  INDEX_BRS.clear(); INDEX_BAIRRO_CLUSTER.clear(); INDEX_TOTAL_BY_CAGE.clear();
+  INDEX_BRS.clear();
+  INDEX_BAIRRO_CLUSTER.clear();
+  INDEX_ADDRESS_CLUSTER.clear();
+  INDEX_TOTAL_BY_CAGE.clear();
+
   for(const r of BASE_ROWS){
     if(r.brs) INDEX_BRS.set(normBRS(r.brs), r);
 
+    // Índice por bairro
     if(r.bairro){
       const key = stripAccents(String(r.bairro)).trim();
       if(!INDEX_BAIRRO_CLUSTER.has(key)) INDEX_BAIRRO_CLUSTER.set(key, new Map());
@@ -787,12 +829,35 @@ function buildIndexes(){
       if(!mapC.has(keyC)) mapC.set(keyC, []);
       mapC.get(keyC).push(r);
     }
+
+    // Índice por endereço (Destination Address) – único por texto de endereço
+    if(r.endereco){
+      const keyA = stripAccents(String(r.endereco)).trim();
+      if(!INDEX_ADDRESS_CLUSTER.has(keyA)){
+        INDEX_ADDRESS_CLUSTER.set(keyA, {
+          endereco: r.endereco,
+          bairro: r.bairro || '',
+          cages: new Map()
+        });
+      }
+      const obj = INDEX_ADDRESS_CLUSTER.get(keyA);
+      const mapAC = obj.cages;
+      const cageA = r.rota || '(sem rota)';
+      if(!mapAC.has(cageA)) mapAC.set(cageA, []);
+      mapAC.get(cageA).push(r);
+    }
+
     const cage = r.rota || '(sem rota)';
     INDEX_TOTAL_BY_CAGE.set(cage, (INDEX_TOTAL_BY_CAGE.get(cage)||0) + 1);
   }
 
-  const enable = INDEX_BAIRRO_CLUSTER.size > 0;
-  $("#btnNeighModal").disabled = !enable;
+  const enableNeigh = INDEX_BAIRRO_CLUSTER.size > 0;
+  const btnNeigh = $("#btnNeighModal");
+  if(btnNeigh) btnNeigh.disabled = !enableNeigh;
+
+  const enableAddr = INDEX_ADDRESS_CLUSTER.size > 0;
+  const btnAddr = $("#btnAddrModal");
+  if(btnAddr) btnAddr.disabled = !enableAddr;
 }
 
 /* ========= Filtro de veículos ========= */
@@ -845,7 +910,7 @@ async function handleLoad(inputFile){
     const wsExt = wb.Sheets[extName];
     const rowsExt = parseSheetToObjects(wsExt);
 
-    BASE_ROWS = rowsExt.map(normalizeFromExt).filter(r=>r.brs || r.bairro);
+    BASE_ROWS = rowsExt.map(normalizeFromExt).filter(r=>r.brs || r.bairro || r.endereco);
     buildIndexes();
     rebuildVehicleFilterFromBase();
 
@@ -853,14 +918,15 @@ async function handleLoad(inputFile){
     $("#sheetInfo").textContent = `Aba usada: ${extName}`;
     $("#scan").disabled = false; $("#btnScan").disabled = false;
     $("#btnNeighModal").disabled = false;
-    $("#scanMsg").innerHTML = '<span class="ok">Base carregada! Já pode bipar ou pesquisar Neighborhood.</span>';
+    $("#btnAddrModal").disabled = false;
+    $("#scanMsg").innerHTML = '<span class="ok">Base carregada! Já pode bipar ou pesquisar Neighborhood / Endereço.</span>';
 
     const when = new Date().toLocaleString();
     $("#loadMsg").innerHTML = `<span class="ok">Arquivo "<b>${file.name}</b>" lido (${BASE_ROWS.length} linhas) em ${when}.</span>`;
     localStorage.setItem(LS_LAST_BASE, JSON.stringify({name:file.name, rows:BASE_ROWS.length, when:Date.now()}));
 
     hideLoading();
-    showToastCenter({ok:true, title:'Pacotes prontos', subtitle:'Base carregada (arquivo)'});
+    showToastCenter({ok:true, title:'Pacotes prontos', subtitle:'Base carregada (arquivo)'});    
     focusScan();
   }catch(e){
     hideLoading();
@@ -890,11 +956,28 @@ function findSameNeighborhoodGrouped(bairro){
   return Array.from(mapC.entries()).map(([cage,rows])=>({cage,rows,bairro}));
 }
 
-function fillSameTable(groups, bairroLabel, neighMode){
+/**
+ * context:
+ *  - 'scan'  → fluxo normal após bipar BRS
+ *  - 'neigh' → pesquisa por Neighborhood (multi)
+ *  - 'addr'  → pesquisa por Endereço (multi)
+ */
+function fillSameTable(groups, labelForGroup, context){
   const tbody = $("#sameTable tbody"); tbody.innerHTML = "";
-  const labelInfo = neighMode
-    ? (groups.length ? `Encontradas ${groups.length} rotas nas seleção(ões) de Neighborhood.` : "Nenhuma rota para os bairros selecionados.")
-    : (groups.length ? `Encontradas ${groups.length} rotas com o mesmo Neighborhood.` : "Nenhuma outra rota com o mesmo Neighborhood.");
+  let labelInfo = '';
+  if(context === 'neigh'){
+    labelInfo = groups.length
+      ? `Encontradas ${groups.length} rotas nas seleção(ões) de Neighborhood.`
+      : "Nenhuma rota para os bairros selecionados.";
+  }else if(context === 'addr'){
+    labelInfo = groups.length
+      ? `Encontradas ${groups.length} rotas nos endereço(s) selecionados.`
+      : "Nenhuma rota para os endereços selecionados.";
+  }else{
+    labelInfo = groups.length
+      ? `Encontradas ${groups.length} rotas com o mesmo Neighborhood.`
+      : "Nenhuma outra rota com o mesmo Neighborhood.";
+  }
   $("#sameInfo").textContent = labelInfo;
 
   groups.forEach(g=>{
@@ -902,7 +985,7 @@ function fillSameTable(groups, bairroLabel, neighMode){
     const veiculo = g.rows[0]?.veiculo || '—';
     const isFiorino = /fiorino/i.test(veiculo);
     const totalCage = INDEX_TOTAL_BY_CAGE.get(g.cage) || qtdNoBairro;
-    const bairroShown = g.bairro || bairroLabel || '—';
+    const bairroShown = g.bairro || labelForGroup || '—';
 
     let statusHtml = '';
     if(qtdNoBairro <= 3 && !isFiorino){
@@ -925,12 +1008,8 @@ function fillSameTable(groups, bairroLabel, neighMode){
     `;
     const btn = tr.querySelector('button');
     btn.addEventListener('click', ()=>{
-      if(neighMode){
-        NEIGH_PENDING_TARGET = { cage: g.cage, rows: g.rows };
-        $("#brInput").value = '';
-        $("#brHint").textContent = `Rota: ${g.cage} • Bairro: ${bairroShown}`;
-        openModal(brModal);
-      }else{
+      // Modo "scan" usa o BR do LAST_ROW
+      if(context === 'scan'){
         if(!LAST_ROW) return;
         const atTarget = pickRepresentativeAT(g.rows);
         const ok = addSelection({ brs: LAST_ROW.brs, at: atTarget, rota: g.cage });
@@ -938,10 +1017,15 @@ function fillSameTable(groups, bairroLabel, neighMode){
           showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${LAST_ROW.brs} → ${atTarget}`});
           playAddedSound(); try{navigator.vibrate?.(10);}catch(_){}
           incAddedCount(g.cage);
-          imprimirQRDaRota(g.cage);
         }else{
           showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
         }
+      }else{
+        // Modo Neighborhood / Endereço: abre modal de BR
+        NEIGH_PENDING_TARGET = { cage: g.cage, rows: g.rows };
+        $("#brInput").value = '';
+        $("#brHint").textContent = `Rota: ${g.cage} • Bairro: ${bairroShown}`;
+        openModal(brModal);
       }
     });
     tbody.appendChild(tr);
@@ -968,7 +1052,7 @@ function renderResult(row, same){
 
   $("#kEndereco").textContent = row.endereco || '—';
 
-  fillSameTable(sameFiltered, row.bairro, /*neighMode=*/false);
+  fillSameTable(sameFiltered, row.bairro, 'scan');
 }
 
 function rerenderSame(){
@@ -986,21 +1070,13 @@ function renderSelections(){
       <td class="mono">${it.brs||'—'}</td>
       <td class="mono">${it.at||'—'}</td>
       <td>${it.rota||'—'}</td>
-      <td>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn small ghost" data-action="print" title="Imprimir QR da Rota">Imprimir QR</button>
-          <button class="btn small ghost danger" data-action="remove" title="Remover">✕</button>
-        </div>
-      </td>
+      <td><button class="btn small ghost danger" title="Remover">✕</button></td>
     `;
-    tr.querySelector('[data-action="remove"]').addEventListener('click', ()=>{
+    tr.querySelector('button').addEventListener('click', ()=>{
       decAddedCount(it.rota);
       SELECTED.splice(idx,1);
       saveHistory();
       renderSelections();
-    });
-    tr.querySelector('[data-action="print"]').addEventListener('click', ()=>{
-      if(it.rota) imprimirQRDaRota(it.rota);
     });
     tbody.appendChild(tr);
   });
@@ -1138,7 +1214,7 @@ async function doSendToSheets(){
   }
 }
 
-/* ======== Ler do Sheets (CTs) ======== */
+/* ========= Ler do Sheets ========= */
 const DEFAULT_CTS_TITLE = "Calculation Tasks (CTs)";
 async function loadFromGoogleSheet(url, tabTitle = DEFAULT_CTS_TITLE){
   const spreadsheetId = parseSpreadsheetId(url);
@@ -1168,14 +1244,14 @@ async function loadFromGoogleSheet(url, tabTitle = DEFAULT_CTS_TITLE){
       }
       return o;
     });
-    BASE_ROWS = rowsObj.map(normalizeFromExt).filter(r=>r.brs || r.bairro);
+    BASE_ROWS = rowsObj.map(normalizeFromExt).filter(r=>r.brs || r.bairro || r.endereco);
     buildIndexes();
     rebuildVehicleFilterFromBase();
 
     $("#baseInfo").textContent = `${BASE_ROWS.length} linhas carregadas (Google Sheets)`;
     $("#sheetInfo").textContent = `Aba usada: ${tabTitle}`;
-    $("#scan").disabled = false; $("#btnScan").disabled = false; $("#btnNeighModal").disabled = false;
-    $("#scanMsg").innerHTML = '<span class="ok">Base carregada! Já pode bipar ou pesquisar Neighborhood.</span>';
+    $("#scan").disabled = false; $("#btnScan").disabled = false; $("#btnNeighModal").disabled = false; $("#btnAddrModal").disabled = false;
+    $("#scanMsg").innerHTML = '<span class="ok">Base carregada! Já pode bipar ou pesquisar Neighborhood / Endereço.</span>';
 
     hideLoading();
     showToastCenter({ok:true, title:'Pacotes prontos', subtitle:'Lidos do Google Sheets (CTs)'});    
@@ -1193,6 +1269,42 @@ async function loadFromGoogleSheet(url, tabTitle = DEFAULT_CTS_TITLE){
     showToastCenter({ok:false, title:'Falha ao ler do Sheets'});
     showInfo('Falha ao ler do Sheets', err?.message || String(err));
   }
+}
+async function listTabsFromUrlForImport(){
+  const link = $("#importUrl").value.trim();
+  const select = $("#importTab");
+  select.innerHTML = '<option value="">Carregando abas…</option>'; select.disabled = true;
+  const spreadsheetId = parseSpreadsheetId(link);
+  if(!spreadsheetId){ select.innerHTML = '<option value="">URL inválida</option>'; return; }
+  try{
+    await ensureAuth();
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if(!res.ok){ select.innerHTML = '<option value="">Falha ao listar abas</option>'; return; }
+    const data = await res.json();
+    const sheets = (data.sheets||[]).map(s => s.properties?.title).filter(Boolean);
+    if(!sheets.length){ select.innerHTML = '<option value="">Sem abas visíveis</option>'; return; }
+    select.innerHTML = sheets.map(t => `<option value="${t}">${t}</option>`).join('');
+    select.disabled = false;
+    const preferred = sheets.find(t => t.trim().toLowerCase() === DEFAULT_CTS_TITLE.toLowerCase());
+    select.value = preferred || sheets[0];
+  }catch(_){
+    select.innerHTML = '<option value="">Erro ao carregar abas</option>';
+  }
+}
+function openImportModal(){
+  $("#importUrl").value = '';
+  $("#importTab").innerHTML = '<option value="">Cole a URL para listar as abas…</option>';
+  $("#importTab").disabled = true;
+  openModal(importModal);
+}
+async function doImportFromSheets(){
+  const url = $("#importUrl").value.trim();
+  if(!url){ showInfo('URL inválida', 'Cole a URL do Google Sheets.'); return; }
+  const tab = $("#importTab").value || DEFAULT_CTS_TITLE;
+  closeModal();
+  await loadFromGoogleSheet(url, tab);
 }
 
 /* ========= Ações ========= */
@@ -1213,11 +1325,17 @@ function handleScan(){
   input.value=''; focusScan();
 }
 function resetBase(){
-  BASE_ROWS = []; INDEX_BRS.clear(); INDEX_BAIRRO_CLUSTER.clear(); INDEX_TOTAL_BY_CAGE.clear();
+  BASE_ROWS = [];
+  INDEX_BRS.clear();
+  INDEX_BAIRRO_CLUSTER.clear();
+  INDEX_ADDRESS_CLUSTER.clear();
+  INDEX_TOTAL_BY_CAGE.clear();
   LAST_ROW=null; LAST_SAME=[];
+  NEIGH_SELECTED = new Set();
+  ADDR_SELECTED = new Set();
   $("#baseInfo").textContent = 'nenhuma carregada';
   $("#sheetInfo").textContent = '';
-  $("#scan").disabled = true; $("#btnScan").disabled = true; $("#btnNeighModal").disabled = true;
+  $("#scan").disabled = true; $("#btnScan").disabled = true; $("#btnNeighModal").disabled = true; $("#btnAddrModal").disabled = true;
   $("#scan").value='';
   $("#resultLeft").style.display='none';
   $("#resultRight").style.display='none';
@@ -1227,7 +1345,7 @@ function resetBase(){
   clearAddedCounts();
 }
 
-/* ========= Neighborhood ========= */
+/* ========= Neighborhood Modal ========= */
 function allNeighborhoodKeys(){
   return Array.from(INDEX_BAIRRO_CLUSTER.keys()).sort((a,b)=> a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
 }
@@ -1293,35 +1411,94 @@ function applyNeighSelection(){
     }
   });
   const groups = Array.from(cages.values());
-  fillSameTable(groups, NEIGH_SELECTED.size === 1 ? Array.from(NEIGH_SELECTED)[0] : '(vários)', true);
+  fillSameTable(groups, NEIGH_SELECTED.size === 1 ? Array.from(NEIGH_SELECTED)[0] : '(vários)', 'neigh');
   closeModal();
 }
 
-/* ========= QR / Impressão (ROTA) ========= */
-function imprimirQRDaRota(rota){
-  try{
-    const rotaStr = String(rota||'').trim();
-    if(!rotaStr){ showToastCenter({ok:false, title:'Rota inválida'}); return; }
-
-    const qrWrap = document.getElementById('printQR');
-    qrWrap.innerHTML = '';
-
-    document.getElementById('printTitle').textContent = `ROTA: ${rotaStr.toUpperCase()}`;
-    const now = new Date();
-    document.getElementById('printMeta').textContent =
-      `Gerado em ${now.toLocaleDateString()} ${now.toLocaleTimeString()} • SPR`;
-
-    new QRCode(qrWrap, {
-      text: rotaStr,
-      width: 180,
-      height: 180,
-      correctLevel: QRCode.CorrectLevel.M
-    });
-
-    setTimeout(()=>{ window.print(); }, 50);
-  }catch(e){
-    showToastCenter({ok:false, title:'Falha ao imprimir', subtitle:e?.message||String(e)});
+/* ========= Address Modal ========= */
+function allAddressKeys(){
+  return Array.from(INDEX_ADDRESS_CLUSTER.keys()).sort((a,b)=> a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
+}
+function visibleAddresses(filter){
+  const t = norm(filter||'');
+  const all = allAddressKeys();
+  if(!t) return all;
+  return all.filter(k => norm(k).includes(t));
+}
+function renderAddrList(){
+  const list = $("#addrList");
+  const filter = $("#addrQuery").value;
+  const keys = visibleAddresses(filter);
+  list.innerHTML = `<div class="list-head">Endereços (${keys.length})</div>`;
+  if(!keys.length){
+    list.innerHTML += `<div class="list-item"><em class="muted">Nenhum endereço encontrado</em></div>`;
+    return;
   }
+  keys.forEach(k=>{
+    const obj = INDEX_ADDRESS_CLUSTER.get(k);
+    const labelTxt = obj
+      ? `${obj.endereco}${obj.bairro ? ' — ' + obj.bairro : ''}`
+      : k;
+    const id = 'a_'+k.replace(/\W+/g,'_');
+    const checked = ADDR_SELECTED.has(k) ? 'checked' : '';
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    row.innerHTML = `<input type="checkbox" id="${id}" ${checked}><label for="${id}" style="flex:1;cursor:pointer">${labelTxt}</label>`;
+    row.querySelector('input').addEventListener('change', e=>{
+      if(e.target.checked) ADDR_SELECTED.add(k); else ADDR_SELECTED.delete(k);
+      renderAddrChips();
+    });
+    list.appendChild(row);
+  });
+}
+function renderAddrChips(){
+  const wrap = $("#addrChips"); wrap.innerHTML = '';
+  Array.from(ADDR_SELECTED).sort((a,b)=>a.localeCompare(b,'pt-BR')).forEach(k=>{
+    const obj = INDEX_ADDRESS_CLUSTER.get(k);
+    const labelTxt = obj
+      ? `${obj.endereco}${obj.bairro ? ' — ' + obj.bairro : ''}`
+      : k;
+    const chip = document.createElement('div');
+    chip.className = 'chip-x';
+    chip.innerHTML = `<span>${labelTxt}</span><button title="Remover">×</button>`;
+    chip.querySelector('button').addEventListener('click', ()=>{
+      ADDR_SELECTED.delete(k);
+      renderAddrChips();
+      renderAddrList();
+    });
+    wrap.appendChild(chip);
+  });
+}
+function openAddr(){
+  $("#addrQuery").value = '';
+  renderAddrList();
+  renderAddrChips();
+  openModal(addrModal);
+}
+function applyAddrSelection(){
+  const cages = new Map(); // cage -> {cage, rows, bairro}
+  Array.from(ADDR_SELECTED).forEach(key=>{
+    const obj = INDEX_ADDRESS_CLUSTER.get(key);
+    if(!obj) return;
+    const mapC = obj.cages;
+    for(const [cage, rows] of mapC.entries()){
+      if(!VEH_FILTER.size || VEH_FILTER.has((rows[0]?.veiculo||'').trim())){
+        const cur = cages.get(cage) || { cage, rows: [], bairro: rows[0]?.bairro || obj.bairro || '' };
+        cur.rows.push(...rows);
+        cages.set(cage, cur);
+      }
+    }
+  });
+  const groups = Array.from(cages.values());
+  // labelForGroup usa o endereço quando só 1, senão "vários endereços"
+  let labelForGroup = '(vários endereços)';
+  if(ADDR_SELECTED.size === 1){
+    const only = Array.from(ADDR_SELECTED)[0];
+    const obj = INDEX_ADDRESS_CLUSTER.get(only);
+    if(obj) labelForGroup = obj.endereco;
+  }
+  fillSameTable(groups, labelForGroup, 'addr');
+  closeModal();
 }
 
 /* ========= Listeners ========= */
@@ -1351,12 +1528,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
   $("#sheetUrl").addEventListener("blur", listTabsFromUrl);
   $("#btnDoSend").addEventListener("click", doSendToSheets);
 
-  // LER DO SHEETS (CTs) → pede URL e lê a aba "Calculation Tasks (CTs)"
-  $("#btnLoadSheets").addEventListener("click", async ()=>{
-    const url = prompt('Cole a URL do Google Sheets (Romaneio do dia):');
-    if(!url) return;
-    await loadFromGoogleSheet(url, DEFAULT_CTS_TITLE);
-  });
+  // IMPORTAR (LER DO SHEETS)
+  $("#btnLoadSheets").addEventListener("click", openImportModal);
+  $("#importUrl").addEventListener("change", listTabsFromUrlForImport);
+  $("#importUrl").addEventListener("blur", listTabsFromUrlForImport);
+  $("#btnDoImport").addEventListener("click", doImportFromSheets);
 
   // Rascunho local até logar
   loadHistoryForCurrentUser();
@@ -1381,7 +1557,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
   $("#btnNeighApply").addEventListener('click', applyNeighSelection);
 
-  // BR modal confirm (modo Neighborhood → adiciona e já imprime QR da ROTA)
+  // Address modal
+  $("#btnAddrModal").addEventListener('click', openAddr);
+  $("#addrQuery").addEventListener('input', debounce(renderAddrList, 120));
+  $("#btnAddrSelectAll").addEventListener('click', ()=>{
+    visibleAddresses($("#addrQuery").value).forEach(k=>ADDR_SELECTED.add(k));
+    renderAddrList(); renderAddrChips();
+  });
+  $("#btnAddrClear").addEventListener('click', ()=>{
+    ADDR_SELECTED.clear(); renderAddrList(); renderAddrChips();
+  });
+  $("#btnAddrApply").addEventListener('click', applyAddrSelection);
+
+  // BR modal confirm (para Neighborhood / Endereço)
   $("#btnBrConfirm").addEventListener('click', ()=>{
     const br = ($("#brInput").value||'').trim();
     if(!br){ showToastCenter({ok:false,title:'BR obrigatório'}); return; }
@@ -1392,34 +1580,33 @@ document.addEventListener('DOMContentLoaded', ()=>{
       showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${br} → ${atTarget}`});
       playAddedSound(); try{navigator.vibrate?.(10);}catch(_){}
       incAddedCount(NEIGH_PENDING_TARGET.cage);
-      imprimirQRDaRota(NEIGH_PENDING_TARGET.cage);
     }else{
       showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
     }
     NEIGH_PENDING_TARGET = null;
     closeModal();
   });
-
-  /* ========= Drag & Drop ========= */
-  (function setupDnd(){
-    const dz = document.getElementById('dropzone');
-    const input = document.getElementById('file');
-    const prevent = e=>{e.preventDefault(); e.stopPropagation();};
-    ['dragenter','dragover','dragleave','drop'].forEach(ev=> dz.addEventListener(ev, prevent));
-    dz.addEventListener('dragenter', ()=> dz.classList.add('dragover'));
-    dz.addEventListener('dragover',  ()=> dz.classList.add('dragover'));
-    dz.addEventListener('dragleave', ()=> dz.classList.remove('dragover'));
-    dz.addEventListener('drop', (e)=>{
-      dz.classList.remove('dragover');
-      const f = e.dataTransfer?.files?.[0];
-      if(f){ input.files = e.dataTransfer.files; handleLoad(f); }
-    });
-    input.addEventListener('change', (e)=>{
-      const f = e.target.files?.[0];
-      if(f) handleLoad(f);
-    });
-  })();
 });
+
+/* ========= Drag & Drop ========= */
+(function setupDnd(){
+  const dz = document.getElementById('dropzone');
+  const input = document.getElementById('file');
+  const prevent = e=>{e.preventDefault(); e.stopPropagation();};
+  ['dragenter','dragover','dragleave','drop'].forEach(ev=> dz.addEventListener(ev, prevent));
+  dz.addEventListener('dragenter', ()=> dz.classList.add('dragover'));
+  dz.addEventListener('dragover',  ()=> dz.classList.add('dragover'));
+  dz.addEventListener('dragleave', ()=> dz.classList.remove('dragover'));
+  dz.addEventListener('drop', (e)=>{
+    dz.classList.remove('dragover');
+    const f = e.dataTransfer?.files?.[0];
+    if(f){ input.files = e.dataTransfer.files; handleLoad(f); }
+  });
+  input.addEventListener('change', (e)=>{
+    const f = e.target.files?.[0];
+    if(f) handleLoad(f);
+  });
+})();
 </script>
 </body>
 </html>
