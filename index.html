@@ -1015,10 +1015,14 @@ function fillSameTable(groups, labelForGroup, context){
         const ok = addSelection({ brs: LAST_ROW.brs, at: atTarget, rota: g.cage });
         if(ok){
           showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${LAST_ROW.brs} → ${atTarget}`});
-          playAddedSound(); try{navigator.vibrate?.(10);}catch(_){}
+          playAddedSound(); 
+          try{navigator.vibrate?.(10);}catch(_){}
           incAddedCount(g.cage);
+          /* VOLTAR PARA BARRA DE BIPAGEM APÓS STATUS VERDE */
+          focusScan();
         }else{
-          showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
+          showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); 
+          playErrorSound();
         }
       }else{
         // Modo Neighborhood / Endereço: abre modal de BR
@@ -1578,10 +1582,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const ok = addSelection({ brs: br, at: atTarget, rota: NEIGH_PENDING_TARGET.cage });
     if(ok){
       showToastCenter({ok:true, title:'Pacote adicionado', subtitle:`${br} → ${atTarget}`});
-      playAddedSound(); try{navigator.vibrate?.(10);}catch(_){}
+      playAddedSound(); 
+      try{navigator.vibrate?.(10);}catch(_){}
       incAddedCount(NEIGH_PENDING_TARGET.cage);
+      /* VOLTAR PARA BARRA DE BIPAGEM APÓS STATUS VERDE */
+      focusScan();
     }else{
-      showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); playErrorSound();
+      showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); 
+      playErrorSound();
     }
     NEIGH_PENDING_TARGET = null;
     closeModal();
