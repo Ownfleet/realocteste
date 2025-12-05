@@ -1405,9 +1405,19 @@ function rebuildVehicleFilterFromBase(){
   for(const r of BASE_ROWS){ if(r.veiculo){ set.add(String(r.veiculo).trim()); } }
   VEH_TYPES = Array.from(set).sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
   const saved = JSON.parse(localStorage.getItem(LS_VEH)||'null');
+  // Se existir salvo, usa. Senão, marca todos como ativos.
   VEH_FILTER = new Set(Array.isArray(saved) ? saved : VEH_TYPES);
   renderFilterUI();
 }
+
+/* FUNÇÃO CENTRAL: verifica se uma rota passa no filtro de veículo */
+function vehicleFilterPass(rows){
+  const veiculo = (rows[0]?.veiculo || '').trim();
+  // Se não há veículos selecionados, não passa nenhuma (filtro "zerado" = mostrar nada)
+  if(!VEH_FILTER.size) return false;
+  return VEH_FILTER.has(veiculo);
+}
+
 function renderFilterUI(){
   const bar  = $("#filterBar");
   const wrap = $("#vehicleChips");
@@ -1557,7 +1567,6 @@ function fillSameTable(groups, labelForGroup, context){
           playAddedSound(); 
           try{navigator.vibrate?.(10);}catch(_){}
           incAddedCount(g.cage);
-          /* VOLTAR PARA BARRA DE BIPAGEM APÓS STATUS VERDE */
           focusScan();
         }else{
           showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); 
@@ -1579,9 +1588,10 @@ function fillSameTable(groups, labelForGroup, context){
 }
 
 function renderResult(row, same){
+  // Aplica filtro: se não tiver nenhum veículo selecionado, some tudo
   const sameFiltered = same
     .filter(g => (g.cage||'') !== (row.rota||'')) 
-    .filter(g => !VEH_FILTER.size || VEH_FILTER.has((g.rows[0]?.veiculo||'').trim()));
+    .filter(g => vehicleFilterPass(g.rows));
 
   $("#resultLeft").style.display="block";
   $("#resultRight").style.display="block";
@@ -1946,7 +1956,7 @@ function applyNeighSelection(){
     const mapC = INDEX_BAIRRO_CLUSTER.get(k);
     if(!mapC) return;
     for(const [cage, rows] of mapC.entries()){
-      if(!VEH_FILTER.size || VEH_FILTER.has((rows[0]?.veiculo||'').trim())){
+      if(vehicleFilterPass(rows)){
         const cur = cages.get(cage) || { cage, rows: [], bairro: k };
         cur.rows.push(...rows);
         cages.set(cage, cur);
@@ -2025,7 +2035,7 @@ function applyAddrSelection(){
     if(!obj) return;
     const mapC = obj.cages;
     for(const [cage, rows] of mapC.entries()){
-      if(!VEH_FILTER.size || VEH_FILTER.has((rows[0]?.veiculo||'').trim())){
+      if(vehicleFilterPass(rows)){
         const cur = cages.get(cage) || { cage, rows: [], bairro: rows[0]?.bairro || obj.bairro || '' };
         cur.rows.push(...rows);
         cages.set(cage, cur);
@@ -2140,7 +2150,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
       playAddedSound(); 
       try{navigator.vibrate?.(10);}catch(_){}
       incAddedCount(NEIGH_PENDING_TARGET.cage);
-      /* VOLTAR PARA BARRA DE BIPAGEM APÓS STATUS VERDE */
       focusScan();
     }else{
       showToastCenter({ok:false, title:'Duplicado', subtitle:'BR já nesta AT'}); 
